@@ -82,6 +82,8 @@ data class Agent(val grid: World, var movementLog: MutableList<Position>) {
         val currentPosition = movementLog.last()
         // 現在位置の上下左右の矢印の長さを取得
         val arrow: Cell = grid.cells[currentPosition]!!
+//        // Degub
+//        println("arrow: $arrow")
         // 移動先を決定
         var destination: List<Int> = emptyList()
         // 確率を考慮してステップ先を選択
@@ -145,14 +147,19 @@ fun main(args: Array<String>) {
     val reward = 100
     /** 学習の繰り返し回数 */
     val repeatNumberOfLearning = 100
+    /** デバッグフラグ */
     val debug = false
 
     /** グリッドワールドの広さを定義 */
-    for(gridWidth in 2 .. grids) {
+    for (gridWidth in 2..grids) {
         /** ゴール位置を決定 */
-        for(goalPosition in 0 until gridWidth*gridWidth) {
+        for (goalPosition in 0 until gridWidth * gridWidth) {
             /** ゴールのPositionインスタンスを生成 */
-            val goal = Position(goalPosition/gridWidth, goalPosition%gridWidth)
+            val goal = Position(goalPosition / gridWidth, goalPosition % gridWidth)
+            // Debug
+            if (debug) {
+                println("goal: $goal")
+            }
 
             /** グリッドワールドを生成 */
             // iは縦軸, jは横軸
@@ -160,46 +167,63 @@ fun main(args: Array<String>) {
             initWorld.cells.init(gridWidth)
 
             /** エージェントの初期位置を決定 */
-            val agentPositions = (0 until gridWidth*gridWidth).toMutableList()
+            val agentPositions = (0 until gridWidth * gridWidth).toMutableList()
             // ゴールとの重複をなくす
-            agentPositions.drop(goalPosition)
-            for(agentPosition in agentPositions) {
+            agentPositions.removeAt(goalPosition)
+            for (agentPosition in agentPositions) {
+                // Debug
+                if (debug) {
+                    println("agentPositions: $agentPositions")
+                    println("initWorld: $initWorld")
+                }
                 // エージェントのインスタンスを生成
-                val agent = Agent(initWorld, mutableListOf(Position(agentPosition/gridWidth, agentPosition%gridWidth)))
+                val agent = Agent(initWorld, mutableListOf(Position(agentPosition / gridWidth, agentPosition % gridWidth)))
 
                 /** 学習回数を決定　*/
-                for(repeatNum in 1..repeatNumberOfLearning) {
+                for (repeatNum in 1..repeatNumberOfLearning) {
                     /** ステップ回数を決定 */
-                    for(step in 1..stepUpperLimits) {
+                    for (step in 1..stepUpperLimits) {
                         // エージェントを移動
                         agent.move()
+                        if (debug) {
+                            println("movementLog: ${agent.movementLog}")
+                        }
+
 
                         // ゴール時
-                        if(goal == agent.movementLog.last()) {
+                        if (goal == agent.movementLog.last()) {
+                            if(debug) {
+                                println("Goal flag")
+                            }
+
                             /** arrowを計算 */
-                            for(i in 0 until agent.movementLog.size-1) {
-                                val newLength = reward * (stepUpperLimits-step+1)/stepUpperLimits
+                            for (i in 0 until agent.movementLog.size - 1) {
+                                val newLength = reward * (stepUpperLimits - step + 1) / stepUpperLimits
                                 // movementLogの前後関係から移動方向を取得
-                                if(agent.movementLog[i].x < agent.movementLog[i+1].x) {
+                                if (agent.movementLog[i].x > agent.movementLog[i + 1].x) {
                                     // 右
-                                    agent.grid.cells[Position(agent.movementLog[i+1].x, agent.movementLog[i+1].y)]!!.right += newLength
-                                } else if(agent.movementLog[i].x > agent.movementLog[i+1].x) {
+                                    agent.grid.cells[Position(agent.movementLog[i + 1].x, agent.movementLog[i + 1].y)]!!.right += newLength
+                                } else if (agent.movementLog[i].x < agent.movementLog[i + 1].x) {
                                     // 左
-                                    agent.grid.cells[Position(agent.movementLog[i+1].x, agent.movementLog[i+1].y)]!!.left += newLength
+                                    agent.grid.cells[Position(agent.movementLog[i + 1].x, agent.movementLog[i + 1].y)]!!.left += newLength
                                 } else {
-                                    if(agent.movementLog[i].y > agent.movementLog[i+1].y) {
+                                    if (agent.movementLog[i].y < agent.movementLog[i + 1].y) {
                                         // 上
-                                        agent.grid.cells[Position(agent.movementLog[i+1].x, agent.movementLog[i+1].y)]!!.up += newLength
+                                        agent.grid.cells[Position(agent.movementLog[i + 1].x, agent.movementLog[i + 1].y)]!!.up += newLength
                                     } else {
                                         // 下
-                                        agent.grid.cells[Position(agent.movementLog[i+1].x, agent.movementLog[i+1].y)]!!.down += newLength
+                                        agent.grid.cells[Position(agent.movementLog[i + 1].x, agent.movementLog[i + 1].y)]!!.down += newLength
                                     }
                                 }
+                            }
+                            // debug
+                            if(debug) {
+                                println("grids: ${agent.grid}")
                             }
                             break
                         }
                         // Debug
-                        if(debug) {
+                        if (debug) {
                             println("gridWidth: $gridWidth, goalPosition: $goalPosition, agentPosition: $agentPosition, repeatNum: $repeatNum, stepUpperStepLimit: $step")
                         }
                     }
