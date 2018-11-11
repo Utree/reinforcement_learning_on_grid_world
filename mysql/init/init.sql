@@ -1,41 +1,35 @@
 USE grid_world;
 
--- Table1: positions
-CREATE TABLE `positions` (
-  `id` INT NOT NULL AUTO_INCREMENT COMMENT '場所のプライマリーキー',
-  `x` INT NOT NULL COMMENT 'x座標',
-  `y` INT NOT NULL COMMENT 'y座標',
-  PRIMARY KEY (`id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='位置';
-
--- Table2: cells セル内の矢印の長さを記録
-CREATE TABLE `cells` (
-  `id` INT NOT NULL AUTO_INCREMENT COMMENT 'プライマリーキー',
-  `position` INT NOT NULL COMMENT '位置',
-  `left` INT NOT NULL COMMENT '左向き矢印の長さ',
-  `up` INT NOT NULL COMMENT '上向き矢印の長さ',
-  `down` INT NOT NULL COMMENT '下向き矢印の長さ',
-  `right` INT NOT NULL COMMENT '右向き矢印の長さ',
-  PRIMARY KEY (`id`),
-  CONSTRAINT `fk_position` FOREIGN KEY(`position`) REFERENCES positions(`id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='グリッドを構成するセル';
-
--- Table3: agents
+-- Table1: agents
 CREATE TABLE `agents` (
-  `id` INT NOT NULL AUTO_INCREMENT COMMENT 'エージェントのプライマリーキー',
-  `learning_number` INT NOT NULL COMMENT '学習回数',
+  `id` INT NOT NULL AUTO_INCREMENT COMMENT '場所のプライマリーキー',
+  `grid_width` INT NOT NULL COMMENT 'グリッドの横幅',
+  `goal_x` INT NOT NULL COMMENT 'ゴールのx座標',
+  `goal_y` INT NOT NULL COMMENT 'ゴールのy座標',
+  `learning_counter` INT NOT NULL COMMENT '学習回数',
   `step_limit` INT NOT NULL COMMENT 'ステップ回数の上限',
-  `cells` INT NOT NULL COMMENT 'グリッドが持つセル',
-  `aim` INT NOT NULL COMMENT '目的 0:学習, 1:評価',
-  CONSTRAINT `fk_cells` FOREIGN KEY(`cells`) REFERENCES cells(`id`),
+  `is_succeed` INT NOT NULL COMMENT 'ゴール到達のフラグ true:1, false:0',
+  `is_learning` INT NOT NULL COMMENT '学習と評価のフラグ 評価:1, 学習:0',
   PRIMARY KEY (`id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='エージェントの記録';
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='エージェント';
 
--- Table4: step_logs
-CREATE TABLE `step_logs` (
+-- Table2: movement_log
+CREATE TABLE `movement_log` (
   `agent_id` INT NOT NULL COMMENT '紐付けるエージェント',
-  `step_counter` INT NOT NULL COMMENT 'ステップ回数のカウンタ',
-  `steps` INT NOT NULL COMMENT '位置',
-  CONSTRAINT `fk_agent_id` FOREIGN KEY(`agent_id`) REFERENCES agents(`id`),
-  CONSTRAINT `fk_steps` FOREIGN KEY(`steps`) REFERENCES positions(`id`)
+  `x` INT NOT NULL COMMENT 'ゴールのx座標',
+  `y` INT NOT NULL COMMENT 'ゴールのy座標',
+  `step_counter` INT NOT NULL COMMENT 'ステップ回数 0ベース',
+  CONSTRAINT `fk_agent_id1` FOREIGN KEY(`agent_id`) REFERENCES agents(`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='エージェントの移動ログ';
+
+-- Table3: grid_world
+CREATE TABLE `grid_world` (
+  `agent_id` INT NOT NULL COMMENT '紐付けるエージェント',
+  `x` INT NOT NULL COMMENT 'ゴールのx座標',
+  `y` INT NOT NULL COMMENT 'ゴールのy座標',
+  `left_arrow` INT NOT NULL COMMENT '左方向の矢印',
+  `up_arrow` INT NOT NULL COMMENT '上方向の矢印',
+  `down_arrow` INT NOT NULL COMMENT '下方向の矢印',
+  `right_arrow` INT NOT NULL COMMENT '右方向の矢印',
+  CONSTRAINT `fk_agent_id2` FOREIGN KEY(`agent_id`) REFERENCES agents(`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='グリッドワールドの情報';
