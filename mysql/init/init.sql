@@ -26,6 +26,7 @@ CREATE TABLE `agents` (
   `learning_number` INT NOT NULL COMMENT '学習回数',
   `step_limit` INT NOT NULL COMMENT 'ステップ回数の上限',
   `cells` INT NOT NULL COMMENT 'グリッドが持つセル',
+  `aim` INT NOT NULL COMMENT '目的 0:学習, 1:評価',
   CONSTRAINT `fk_cells` FOREIGN KEY(`cells`) REFERENCES cells(`id`),
   PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='エージェントの記録';

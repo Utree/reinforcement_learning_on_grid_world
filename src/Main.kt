@@ -44,6 +44,23 @@ data class Position(var x: Int, var y: Int)
  * グリッドワールドのマップチップ
  */
 data class World(var cells: MutableMap<Position, Cell>)
+// グリッドワールドを初期化
+fun MutableMap<Position, Cell>.init(index: Int) {
+    for(i in 0 until index) {
+        for (j in 0 until index) {
+            // up
+            val up: Int = if (i > 0) 0 else -1
+            // down
+            val down: Int = if (i < index - 1) 0 else -1
+            // right
+            val right: Int = if (j < index - 1) 0 else -1
+            // left
+            val left: Int = if (j > 0) 0 else -1
+
+            this[Position(j, i)] = Cell(left, up, down, right)
+        }
+    }
+}
 
 /**
  * エージェント
@@ -54,139 +71,149 @@ data class World(var cells: MutableMap<Position, Cell>)
  * @property movementLog
  * 移動ログ
  */
-data class Agent(val grid: World, var movementLog: List<Position>)
+data class Agent(val grid: World, var movementLog: MutableList<Position>) {
+    private val rand = Random()
+
+    /**
+     * 次の移動先を決定する
+     */
+    fun move() {
+        // 現在位置
+        val currentPosition = movementLog.last()
+        // 現在位置の上下左右の矢印の長さを取得
+        val arrow: Cell = grid.cells[currentPosition]!!
+        // 移動先を決定
+        var destination: List<Int> = emptyList()
+        // 確率を考慮してステップ先を選択
+        for (k in 0..arrow.up)
+            destination += 0
+        for (k in 0..arrow.down)
+            destination += 1
+        for (k in 0..arrow.right)
+            destination += 2
+        for (k in 0..arrow.left)
+            destination += 3
+
+        // 現在位置を変更
+        movementLog.add(
+                when(destination[rand.nextInt(destination.size)]) {
+                    // UP
+                    0 -> Position(currentPosition.x, currentPosition.y-1)
+                    // DOWN
+                    1 -> Position(currentPosition.x, currentPosition.y+1)
+                    // RIGHT
+                    2 -> Position(currentPosition.x+1, currentPosition.y)
+                    // LEFT
+                    else -> Position(currentPosition.x-1, currentPosition.y)
+                }
+        )
+    }
+
+    /**
+     * movementLogをリセット
+     *
+     * @param gridWidth グリッドワールドの幅
+     *
+     * @param goalPosition ゴールの位置
+     *  ex)
+     *   0  1  2  3
+     *   4  5  6  7
+     *   8  9 10 11
+     *  12 13 14 15
+     */
+    fun resetPosition(gridWidth: Int, goalPosition: Int) {
+        val nextAgentPositions = (0 until gridWidth*gridWidth).toMutableList()
+        // ゴールとの重複をなくす
+        nextAgentPositions.drop(goalPosition)
+        // シャッフル
+        nextAgentPositions.shuffle()
+        // 再設定
+        this.movementLog = mutableListOf(Position(nextAgentPositions[0]/gridWidth, nextAgentPositions[0]%gridWidth))
+    }
+}
+
 
 /**
  * エントリーポイント
  */
 fun main(args: Array<String>) {
-    /** 乱数生成用インスタンス */
-    val rand = Random()
-
     /** グリッドワールドの広さ */
-    // Todo: 標準入力からデータをもらう
-    val grids = 3
-
-    /** ゴールとエージェントの位置を決定する */
-
-    /** ゴールの位置 */
-    // Todo: 動的に決定する
-    val goal = Position(0, 1)
-
-    /** エージェントの個数 */
-    // Todo: 標準入力からデータをもらう
-    var agentNumber = 2
-
-    /** エージェントの初期位置 */
-    // Todo: 動的に決定する
-    val agentInitPosition1 = Position(1, 2)
-    val agentInitPosition2 = Position(1, 1)
-
+    val grids = 11
     /** ステップ(移動)回数の上限 */
-    // Todo: 標準入力からデータをもらう
-    val stepUpperLimit = 6
-
+    val stepUpperLimits = 22
+    /** 報酬 */
+    val reward = 100
     /** 学習の繰り返し回数 */
-    // Todo: 標準入力からデータをもらう
-    val repeatNumberOfLearning = 4
+    val repeatNumberOfLearning = 100
+    val debug = false
 
-    /** エージェント間で報酬を共有するかのフラグ */
-    // Todo: 標準入力からデータをもらう
-    val shareRewards = true
+    /** グリッドワールドの広さを定義 */
+    for(gridWidth in 2 .. grids) {
+        /** ゴール位置を決定 */
+        for(goalPosition in 0 until gridWidth*gridWidth) {
+            /** ゴールのPositionインスタンスを生成 */
+            val goal = Position(goalPosition/gridWidth, goalPosition%gridWidth)
 
-    /** 学習を繰り返すたびにエージェントの位置を変更するかのフラグ */
-    // Todo: 標準入力からデータをもらう
-    val changeAgentPosition = true
+            /** グリッドワールドを生成 */
+            // iは縦軸, jは横軸
+            val initWorld = World(mutableMapOf())
+            initWorld.cells.init(gridWidth)
+
+            /** エージェントの初期位置を決定 */
+            val agentPositions = (0 until gridWidth*gridWidth).toMutableList()
+            // ゴールとの重複をなくす
+            agentPositions.drop(goalPosition)
+            for(agentPosition in agentPositions) {
+                // エージェントのインスタンスを生成
+                val agent = Agent(initWorld, mutableListOf(Position(agentPosition/gridWidth, agentPosition%gridWidth)))
+
+                /** 学習回数を決定　*/
+                for(repeatNum in 1..repeatNumberOfLearning) {
+                    /** ステップ回数を決定 */
+                    for(step in 1..stepUpperLimits) {
+                        // エージェントを移動
+                        agent.move()
+
+                        // ゴール時
+                        if(goal == agent.movementLog.last()) {
+                            /** arrowを計算 */
+                            for(i in 0 until agent.movementLog.size-1) {
+                                val newLength = reward * (stepUpperLimits-step+1)/stepUpperLimits
+                                // movementLogの前後関係から移動方向を取得
+                                if(agent.movementLog[i].x < agent.movementLog[i+1].x) {
+                                    // 右
+                                    agent.grid.cells[Position(agent.movementLog[i+1].x, agent.movementLog[i+1].y)]!!.right += newLength
+                                } else if(agent.movementLog[i].x > agent.movementLog[i+1].x) {
+                                    // 左
+                                    agent.grid.cells[Position(agent.movementLog[i+1].x, agent.movementLog[i+1].y)]!!.left += newLength
+                                } else {
+                                    if(agent.movementLog[i].y > agent.movementLog[i+1].y) {
+                                        // 上
+                                        agent.grid.cells[Position(agent.movementLog[i+1].x, agent.movementLog[i+1].y)]!!.up += newLength
+                                    } else {
+                                        // 下
+                                        agent.grid.cells[Position(agent.movementLog[i+1].x, agent.movementLog[i+1].y)]!!.down += newLength
+                                    }
+                                }
+                            }
+                            break
+                        }
+                        // Debug
+                        if(debug) {
+                            println("gridWidth: $gridWidth, goalPosition: $goalPosition, agentPosition: $agentPosition, repeatNum: $repeatNum, stepUpperStepLimit: $step")
+                        }
+                    }
 
 
+                    /** DBに記録 */
 
-    /** グリッドワールドを生成 */
-    // iは縦軸, jは横軸
-    val initWorld = World(mutableMapOf())
-    for(i in 0 until grids) {
-        for (j in 0 until grids) {
-            // up
-            val up: Int = if (i > 0) 0 else -1
-            // down
-            val down: Int = if (i < grids - 1) 0 else -1
-            // right
-            val right: Int = if (j < grids - 1) 0 else -1
-            // left
-            val left: Int = if (j > 0) 0 else -1
-
-            initWorld.cells[Position(j, i)] = Cell(left, up, down, right)
-        }
-    }
-    /** agentのインスタンスを生成 */
-    val agent1 = Agent(initWorld, listOf(agentInitPosition1))
-    val agent2 = Agent(initWorld, listOf(agentInitPosition2))
-
-    /**
-     * エージェントを動かす
-     */
-    // 学習を繰り返す
-    for(i in 0 until repeatNumberOfLearning) {
-        // エージェントを移動
-        for(j in 0 until stepUpperLimit) {
-            // 移動先を決定する
-            var list1: List<Int> = emptyList()
-            // 現在位置
-            val currentPosition = agent1.movementLog.last()
-            // 現在位置の上下左右の矢印の長さを取得する
-            val arrow = agent1.grid.cells[currentPosition]
-            // 確率を考慮してステップ先を選択する
-            for (k in 0..arrow?.up!!)
-                list1 += 0
-            for (k in 0..arrow.down)
-                list1 += 1
-            for (k in 0..arrow.right)
-                list1 += 2
-            for (k in 0..arrow.left)
-                list1 += 3
-
-            // 現在位置を変更する
-            agent1.movementLog +=  when(list1[rand.nextInt(list1.size)]) {
-                // UP
-                0 -> {Position(currentPosition.x, currentPosition.y-1)}
-                // DOWN
-                1 -> {Position(currentPosition.x, currentPosition.y+1)}
-                // RIGHT
-                2 -> {Position(currentPosition.x+1, currentPosition.y)}
-                // LEFT
-                else -> {Position(currentPosition.x-1, currentPosition.y)}
-            }
-
-            // Debug
-            println("j: $j")
-            println(agent1.movementLog)
-            println("\n")
-
-            // ゴール後、終了
-            if(goal == agent1.movementLog.last()) {
-                println("GOAL!!")
-                break
+                    /** エージェントの初期位置を再設定 */
+                    agent.resetPosition(gridWidth, goalPosition)
+                }
             }
         }
-
-        // arrowを計算
-
-        // 移動ログをDBに記録
-
-        // movementLogをリセット
-        agent1.movementLog = if(changeAgentPosition) {
-            // Todo: エージェントの初期位置を変更
-            listOf(agentInitPosition1)
-        } else {
-            listOf(agentInitPosition1)
-        }
-
-
-        // グリッドワールドを更新
-        if(shareRewards) {
-            // Todo: エージェント間で報酬を共有
-        } else {
-        }
     }
+
 
     print("Hello Kotlin")
 }
