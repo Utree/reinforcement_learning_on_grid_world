@@ -126,7 +126,7 @@ data class Agent(val grid: World, var movementLog: MutableList<Position>) {
     fun resetPosition(gridWidth: Int, goalPosition: Int) {
         val nextAgentPositions = (0 until gridWidth*gridWidth).toMutableList()
         // ゴールとの重複をなくす
-        nextAgentPositions.drop(goalPosition)
+        nextAgentPositions.removeAt(goalPosition)
         // シャッフル
         nextAgentPositions.shuffle()
         // 再設定
