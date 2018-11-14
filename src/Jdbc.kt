@@ -20,10 +20,10 @@ object SqlExecutor {
 
 
     // SQL文を実行する関数(情報の更新用)
-    fun executeSql(SQL: String): Int {
+    fun executeSql(SQL: String) {
         // SQL文を実行し、その結果をresultSetに代入する
         val stmt = connection.createStatement()
-        return stmt.executeUpdate(SQL, Statement.RETURN_GENERATED_KEYS)
+        stmt.executeUpdate(SQL)
     }
 
     // SQL文を実行する関数(情報の取得用)
