@@ -82,33 +82,33 @@ class Agent(val grid: World, var movementLog: MutableList<Position>, private val
         val currentPosition = movementLog.last()
         // 現在位置の上下左右の矢印の長さを取得
         val arrow: Cell = grid.cells[currentPosition]!!
-
-        var awl = listOf(arrow.up, arrow.down, arrow.right, arrow.left)
-
-        val y = if(isLearning) {
+        // 矢印の長さをlist形式にする
+        var arrowList = listOf(arrow.up, arrow.down, arrow.right, arrow.left)
+        // 学習なら0, 評価なら矢印の最大値未満の値は選択する確率を0にする
+        val baseLine = if(isLearning) {
             0
         } else {
-            awl.max()
+            arrowList.max()
         }
+        // 矢印の長さを確率計算用に修正
+        val up = if(arrow.up >= baseLine!!) arrow.up + 1 else 0
+        val down = if(arrow.down >= baseLine) arrow.down + 1 else 0
+        val right = if(arrow.right >= baseLine) arrow.right + 1 else 0
+        val left = if(arrow.left >= baseLine) arrow.left + 1 else 0
+        // 矢印の長さをlist形式にする(修正)
+        arrowList = listOf(up, down, right, left)
 
-        val up = if(arrow.up >= y!!) arrow.up + 1 else 0
-        val down = if(arrow.down >= y) arrow.down + 1 else 0
-        val right = if(arrow.right >= y) arrow.right + 1 else 0
-        val left = if(arrow.left >= y) arrow.left + 1 else 0
-
-        awl = listOf(up, down, right, left)
-
-        val x = rand.nextInt(up + down + right + left)
-
+        // 確率的に選択
+        val choice = rand.nextInt(up + down + right + left)
         // 現在位置を変更
         movementLog.add(
-            if(0 <= x && x < awl[0]) {
+            if(0 <= choice && choice < arrowList[0]) {
                 // UP
                 Position(currentPosition.x, currentPosition.y-1)
-            } else if(awl[0] <= x && x < awl[0] + awl[1]) {
+            } else if(arrowList[0] <= choice && choice < arrowList[0] + arrowList[1]) {
                 // DOWN
                 Position(currentPosition.x, currentPosition.y+1)
-            } else if(awl[0] + awl[1] <= x && x < awl[0] + awl[1] + awl[2]) {
+            } else if(arrowList[0] + arrowList[1] <= choice && choice < arrowList[0] + arrowList[1] + arrowList[2]) {
                 // RIGHT
                 Position(currentPosition.x+1, currentPosition.y)
             } else {
@@ -183,17 +183,15 @@ fun main(args: Array<String>) {
     val memoryTUpper = 10
     val memoryTLower = 1
     val memoryTBasic = 7
+    /** ゴールの基本位置 */
+    val goalBasic = 0
     /**
      * agentの通し番号
      *
      * 注意: 保存するDBにはデータが入っていないことを確認
      */
     var agentCounter = 1
-    /** Todo: DBからフィールド数を取得し、agentCounterを更新 */
-
-    var agentSQL = ""
-    var movementLogSQL = ""
-    var gridWorldSQL = ""
+    // Todo: DBからフィールド数を取得し、agentCounterを更新
 
     /** 学習結果(Agent)を記録 */
     var learningAgents = mutableListOf<List<Int>>()
@@ -232,18 +230,19 @@ fun main(args: Array<String>) {
                     /** グリッドワールドを生成 */
                     // iは縦軸, jは横軸
                     val initWorld = World(mutableMapOf())
+                    // グリッドワールドを初期化
                     initWorld.cells.init(gridWidth)
                     // エージェントのインスタンスを生成
                     val agent = Agent(initWorld, mutableListOf(Position(agentPosition / gridWidth, agentPosition % gridWidth)), true)
 
                     /** 学習回数を決定 */
-                    for (repeatNum in 1..(if(gridWidth == gridsBasic && goalPosition == 0) {
+                    for (repeatNum in 1..(if(gridWidth == gridsBasic && goalPosition == goalBasic) {
                         repeatUpperNumberOfLearning
                     } else {
                         repeatBasicNumberOfLearning
                     })) {
                         /** ステップ回数を決定 */
-                        for (step in stepLowerLimits..(if(gridWidth == gridsBasic && goalPosition == 0) {
+                        for (step in stepLowerLimits..(if(gridWidth == gridsBasic && goalPosition == goalBasic) {
                             stepUpperLimits
                         } else {
                             stepBasicLimits
@@ -263,12 +262,13 @@ fun main(args: Array<String>) {
                                  *
                                  * 1かつ２かつ３のときも実行
                                  **/
-                                if((gridWidth == gridsBasic && goalPosition == 0 && paramT == memoryTBasic)
+                                if((gridWidth == gridsBasic && goalPosition == goalBasic && paramT == memoryTBasic)
                                         || (gridWidth == gridsBasic && repeatNum == repeatBasicNumberOfLearning && paramT == memoryTBasic)
-                                        || (goalPosition == 0 && repeatNum == repeatBasicNumberOfLearning && paramT == memoryTBasic)
-                                        || (gridWidth == gridsBasic && goalPosition == 0 && repeatNum == repeatBasicNumberOfLearning)) {
-                                    /** 学習開始 */
+                                        || (goalPosition == goalBasic && repeatNum == repeatBasicNumberOfLearning && paramT == memoryTBasic)
+                                        || (gridWidth == gridsBasic && goalPosition == goalBasic && repeatNum == repeatBasicNumberOfLearning)) {
+                                    // 成功フラグ
                                     var isSuccess = 0
+                                    // ステップ数だけ繰り返す
                                     for(stp in 1..step) {
                                         // エージェントを移動
                                         agent.move()
@@ -282,15 +282,15 @@ fun main(args: Array<String>) {
                                                 paramT
                                             }
 
+                                            // 成功フラグを立てる
                                             isSuccess = 1
-                                            /**
-                                             * arrowを計算 */
+
+                                            /**　arrowを計算 */
                                             for (movementLogIndex in agent.movementLog.size-2 downTo 0) {
                                                 // ptは1からpTまでの値
                                                 val pt = pT - movementLogIndex
-                                                // 矢印の長さ
+                                                // 矢印の長さを定義
                                                 val newLength = reward * (pT - pt + 1) / pT
-
 
                                                 // movementLogの前後関係から移動方向を取得
                                                 if (agent.movementLog[movementLogIndex].x < agent.movementLog[movementLogIndex + 1].x) {
@@ -311,6 +311,7 @@ fun main(args: Array<String>) {
                                             }
                                         }
                                     }
+
                                     /** 記録 */
                                     // agentsを記録
                                     learningAgents.add(listOf(agentCounter, gridWidth, goalPosition / gridWidth, goalPosition % gridWidth, repeatNum, step, isSuccess, paramT))
@@ -339,56 +340,18 @@ fun main(args: Array<String>) {
 
         }
     }
-//    println("start saving agent")
-//    /** DBに記録 */
-//    for(aTmp in learningAgents) {
-////        // agentsを記録
-////        SqlExecutor.executeSql(
-////                "INSERT INTO grid_world_1.agents(id, grid_width, goal_x, goal_y, learning_counter, step_limit, is_succeed, is_learning, T) " +
-////                        "VALUES(${aTmp[0]}, ${aTmp[1]}, ${aTmp[2]}, ${aTmp[3]}, ${aTmp[4]}, ${aTmp[5]}, ${aTmp[6]}, 1, ${aTmp[7]});"
-////        )
-////    }
-////    println("finish saving agent")
-////    println("start saving movementLog")
-////    for(mTmp in learningMovementLog) {
-////        // movement_logを記録
-////        SqlExecutor.executeSql(
-////                "INSERT INTO grid_world_1.movement_log (agent_id, x, y, step_counter) " +
-////                        "VALUES(${mTmp[0]}, ${mTmp[1]}, ${mTmp[2]}, ${mTmp[3]});"
-////        )
-////    }
-////    println("finish saving movementLog")
-////    println("start saving grids")
-////    for(gTmp in learningGridWorld) {
-////        // gridWorldを記録
-////        SqlExecutor.executeSql(
-////                "INSERT INTO grid_world_1.grid_world (agent_id, x, y, left_arrow, up_arrow, down_arrow, right_arrow) " +
-////                        "VALUES(${gTmp[0]}, ${gTmp[1]}, ${gTmp[2]}, ${gTmp[3]}, ${gTmp[4]}, ${gTmp[5]}, ${gTmp[6]});"
-////        )
-////    }
-////    println("finish saving grids")
     // 学習終了
     println("学習終了")
-
-    val goalBasic = 0
 
     /**
      * 環境(1-1) グリッドワールドの大きさ
      *
      * 学習しやすいグリッドワールドの広さは？
      **/
+
     /** グリッドワールドの広さを定義 */
-    // Todo: 各グリッドにおける成功確率
+    println("-- 環境(1-1) --")
     for (gridWidth in gridsMin..gridsMax) {
-        /** agent一覧を取得 */
-        // 条件
-        // グリッドの広さが一致
-        // ゴールの位置が一致
-        // 学習回数が一致
-        // ステップ回数が一致
-        // 学習フラグが立ってる
-        // 成功フラグが立ってる
-        // 100エージェント
         /** 対象の学習済みエージェント */
         var learnedAgents = mutableListOf<List<Int>>()
         /** learnedAgentsから100のバリデーションを掛けてsuccessFlagが立ってたもの */
@@ -405,13 +368,23 @@ fun main(args: Array<String>) {
 
         /** エージェントを探す */
         for (tmp in learningAgents) {
-            if (tmp[1] == gridWidth && tmp[2] == goalBasic && tmp[3] == goalBasic && tmp[4] == repeatBasicNumberOfLearning && tmp[5] == stepBasicLimits && tmp[7] == memoryTBasic) {
+            /**
+             * 1. グリッドの広さ
+             * 2. ゴールの位置
+             * 3. 学習回数
+             * 4. ステップ回数
+             * 5. Tの値
+             * が一致するものを探す
+             */
+            if (tmp[1] == gridWidth &&
+                    tmp[2] == goalBasic &&
+                    tmp[3] == goalBasic &&
+                    tmp[4] == repeatBasicNumberOfLearning &&
+                    tmp[5] == stepBasicLimits &&
+                    tmp[7] == memoryTBasic) {
                 learnedAgents.add(tmp)
             }
         }
-        /** 統計情報 */
-        println("$gridWidth における学習済みエージェントの数は ${learnedAgents.size} です。")
-
         /** 各グリッドにおける学習の成功確率(100エージェントのバリデーションを掛ける) */
         for (agentIndex in 0 until 100) {
             if (learnedAgents[agentIndex][6] == 1) {
@@ -420,11 +393,13 @@ fun main(args: Array<String>) {
                 failedAgents.add(learnedAgents[agentIndex])
             }
         }
+
         /** 統計情報 */
+        println("$gridWidth における学習済みエージェントの数は ${learnedAgents.size} です。")
         println("$gridWidth における学習の成功確率は ${successAgents.size} %です。")
 
         /** 評価 */
-        /** グリッドワールドを生成 */
+        // グリッドワールドを生成
         val initWorld = World(mutableMapOf())
         // 初期化
         initWorld.cells.init(gridWidth)
@@ -440,7 +415,7 @@ fun main(args: Array<String>) {
                 }
             }
         }
-        // 評価
+
         /** 考察時にエージェントの数が100になるように修正 */
         for (adjustment in 1..(when (gridWidth) {
             2 -> 34
@@ -459,14 +434,16 @@ fun main(args: Array<String>) {
             agentPositions.removeAt(goalBasic)
             // 候補の中から無作為に抽出
             agentPositions.shuffle()
+            // エージェントの初期位置を決定
             for(agentPosition in agentPositions) {
                 // エージェントを生成
                 val agent = Agent(initWorld, mutableListOf(Position(agentPosition / gridWidth, agentPosition % gridWidth)), false)
 
-                // 評価回数
+                // 評価回数を定義
                 for(repeatNum in 1..repeatBasicNumberOfLearning) {
+                    // 成功フラグ
                     var isSuccess = 0
-                    // ステップ回数
+                    // ステップ回数を定義
                     for(j in 1..stepBasicLimits) {
                         // 移動
                         agent.move()
@@ -497,6 +474,7 @@ fun main(args: Array<String>) {
                                         agent.grid.cells[Position(stepJ, stepI)]!!.right))
                             }
                         }
+                        
                         // エージェントの通し番号を更新
                         agentCounter++
                     }
