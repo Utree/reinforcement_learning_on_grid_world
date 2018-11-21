@@ -82,30 +82,39 @@ data class Agent(val grid: World, var movementLog: MutableList<Position>) {
         val currentPosition = movementLog.last()
         // 現在位置の上下左右の矢印の長さを取得
         val arrow: Cell = grid.cells[currentPosition]!!
-        // 移動先を決定
-        var destination: List<Int> = emptyList()
-        // 確率を考慮してステップ先を選択
-        for (k in 0..arrow.up)
-            destination += 0
-        for (k in 0..arrow.down)
-            destination += 1
-        for (k in 0..arrow.right)
-            destination += 2
-        for (k in 0..arrow.left)
-            destination += 3
+
+        var awl = listOf(arrow.up, arrow.down, arrow.right, arrow.left)
+
+        val y = if(isLearning) {
+            0
+        } else {
+            awl.max()
+        }
+
+        val up = if(arrow.up >= y!!) arrow.up + 1 else 0
+        val down = if(arrow.down >= y) arrow.down + 1 else 0
+        val right = if(arrow.right >= y) arrow.right + 1 else 0
+        val left = if(arrow.left >= y) arrow.left + 1 else 0
+
+        awl = listOf(up, down, right, left)
+
+        val x = rand.nextInt(up + down + right + left)
 
         // 現在位置を変更
         movementLog.add(
-                when(destination[rand.nextInt(destination.size)]) {
-                    // UP
-                    0 -> Position(currentPosition.x, currentPosition.y-1)
-                    // DOWN
-                    1 -> Position(currentPosition.x, currentPosition.y+1)
-                    // RIGHT
-                    2 -> Position(currentPosition.x+1, currentPosition.y)
-                    // LEFT
-                    else -> Position(currentPosition.x-1, currentPosition.y)
-                }
+            if(0 <= x && x < awl[0]) {
+                // UP
+                Position(currentPosition.x, currentPosition.y-1)
+            } else if(awl[0] <= x && x < awl[0] + awl[1]) {
+                // DOWN
+                Position(currentPosition.x, currentPosition.y+1)
+            } else if(awl[0] + awl[1] <= x && x < awl[0] + awl[1] + awl[2]) {
+                // RIGHT
+                Position(currentPosition.x+1, currentPosition.y)
+            } else {
+                // LEFT
+                Position(currentPosition.x-1, currentPosition.y)
+            }
         )
     }
 
