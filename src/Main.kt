@@ -1,6 +1,4 @@
 import java.util.*
-import java.lang.Thread.sleep
-import kotlin.concurrent.thread
 
 /**
  *  gridのcell
