@@ -1,4 +1,6 @@
 import java.util.*
+import java.lang.Thread.sleep
+import kotlin.concurrent.thread
 
 /**
  *  gridのcell
@@ -71,7 +73,7 @@ fun MutableMap<Position, Cell>.init(index: Int) {
  * @property movementLog
  * 移動ログ
  */
-data class Agent(val grid: World, var movementLog: MutableList<Position>) {
+class Agent(val grid: World, var movementLog: MutableList<Position>, private val isLearning: Boolean) {
     private val rand = Random()
 
     /**
@@ -141,7 +143,6 @@ data class Agent(val grid: World, var movementLog: MutableList<Position>) {
     }
 }
 
-
 /**
  * エントリーポイント
  */
@@ -180,6 +181,10 @@ fun main(args: Array<String>) {
     val repeatBasicNumberOfLearning = 20
     /** デバッグフラグ */
     val debug = true
+    /** 忘却 */
+    val memoryTUpper = 10
+    val memoryTLower = 1
+    val memoryTBasic = 7
     /**
      * agentの通し番号
      *
@@ -187,6 +192,17 @@ fun main(args: Array<String>) {
      */
     var agentCounter = 1
     /** Todo: DBからフィールド数を取得し、agentCounterを更新 */
+
+    var agentSQL = ""
+    var movementLogSQL = ""
+    var gridWorldSQL = ""
+
+    /** 学習結果(Agent)を記録 */
+    var learningAgents = mutableListOf<List<Int>>()
+    /** 学習結果(movementLog)を記録 */
+    var learningMovementLog = mutableListOf<List<Int>>()
+    /** 学習結果(gridWorld)を記録 */
+    var learningGridWorld = mutableListOf<List<Int>>()
 
     /** グリッドワールドの広さを定義 */
     for (gridWidth in gridsMin..gridsMax) {
@@ -197,11 +213,6 @@ fun main(args: Array<String>) {
         for (goalPosition in goalPositions) {
             /** ゴールのPositionインスタンスを生成 */
             val goal = Position(goalPosition / gridWidth, goalPosition % gridWidth)
-
-            /** グリッドワールドを生成 */
-            // iは縦軸, jは横軸
-            val initWorld = World(mutableMapOf())
-            initWorld.cells.init(gridWidth)
 
             /** 考察時にエージェントの数が100になるように修正 */
             for(adjustment in 1..(when(gridWidth) {
@@ -220,8 +231,12 @@ fun main(args: Array<String>) {
                 // 候補の中から無作為に抽出
                 agentPositions.shuffle()
                 for (agentPosition in agentPositions) {
+                    /** グリッドワールドを生成 */
+                    // iは縦軸, jは横軸
+                    val initWorld = World(mutableMapOf())
+                    initWorld.cells.init(gridWidth)
                     // エージェントのインスタンスを生成
-                    val agent = Agent(initWorld, mutableListOf(Position(agentPosition / gridWidth, agentPosition % gridWidth)))
+                    val agent = Agent(initWorld, mutableListOf(Position(agentPosition / gridWidth, agentPosition % gridWidth)), true)
 
                     /** 学習回数を決定 */
                     for (repeatNum in 1..(if(gridWidth == gridsBasic && goalPosition == 0) {
@@ -298,47 +313,224 @@ fun main(args: Array<String>) {
                                             }
                                         }
                                     }
-                                /** DBに記録 */
-                                // agentsを記録
-                                SqlExecutor.executeSql(
-                                        "INSERT INTO grid_world.agents(grid_width, goal_x, goal_y, learning_counter, step_limit, is_succeed, is_learning) " +
-                                                "VALUES($gridWidth, ${goalPosition / gridWidth}, ${goalPosition % gridWidth}, $repeatNum, $step, $isSuccess, 1);"
-                                )
-
-                                // movement_logを記録
-                                for(sqlMLog in 0 until agent.movementLog.size) {
-                                    SqlExecutor.executeSql(
-                                            "INSERT INTO grid_world.movement_log (agent_id, x, y, step_counter) " +
-                                                    "VALUES($agentCounter, ${agent.movementLog[sqlMLog].x}, ${agent.movementLog[sqlMLog].y}, $sqlMLog);"
-                                    )
-                                }
-
-                                // step_logsを記録
-                                for(stepI in 0 until gridWidth) {
-                                    for (stepJ in 0 until gridWidth) {
-                                        SqlExecutor.executeSql(
-                                                "INSERT INTO grid_world.grid_world (agent_id, x, y, left_arrow, up_arrow, down_arrow, right_arrow) " +
-                                                        "VALUES($agentCounter, $stepJ, $stepI, ${agent.grid.cells[Position(stepJ, stepI)]!!.left}, ${agent.grid.cells[Position(stepJ, stepI)]!!.up}, ${agent.grid.cells[Position(stepJ, stepI)]!!.down}, ${agent.grid.cells[Position(stepJ, stepI)]!!.right});"
-                                        )
+                                    /** 記録 */
+                                    // agentsを記録
+                                    learningAgents.add(listOf(agentCounter, gridWidth, goalPosition / gridWidth, goalPosition % gridWidth, repeatNum, step, isSuccess, paramT))
+                                    // movement_logを記録
+                                    for(sqlMLog in 0 until agent.movementLog.size) {
+                                        learningMovementLog.add(listOf(agentCounter, agent.movementLog[sqlMLog].x, agent.movementLog[sqlMLog].y, sqlMLog))
                                     }
-                                }
-                                if(debug) {
-                                    println("agent: $agentCounter is recorded.")
-                                }
+                                    // gridWorldを記録
+                                    for(stepI in 0 until gridWidth) {
+                                        for (stepJ in 0 until gridWidth) {
+                                            learningGridWorld.add(listOf(agentCounter, stepJ, stepI, agent.grid.cells[Position(stepJ, stepI)]!!.left, agent.grid.cells[Position(stepJ, stepI)]!!.up, agent.grid.cells[Position(stepJ, stepI)]!!.down, agent.grid.cells[Position(stepJ, stepI)]!!.right))
+                                        }
+                                    }
 
-                                /** エージェントの初期位置を再設定 */
-                                agent.resetPosition(gridWidth, goalPosition)
-                                // エージェントの通し番号を更新
-                                agentCounter++
+                                    /** エージェントの初期位置を再設定 */
+                                    agent.resetPosition(gridWidth, goalPosition)
+                                    // エージェントの通し番号を更新
+                                    agentCounter++
+                                }
                             }
                         }
                     }
+
                 }
             }
 
         }
     }
+//    println("start saving agent")
+//    /** DBに記録 */
+//    for(aTmp in learningAgents) {
+////        // agentsを記録
+////        SqlExecutor.executeSql(
+////                "INSERT INTO grid_world_1.agents(id, grid_width, goal_x, goal_y, learning_counter, step_limit, is_succeed, is_learning, T) " +
+////                        "VALUES(${aTmp[0]}, ${aTmp[1]}, ${aTmp[2]}, ${aTmp[3]}, ${aTmp[4]}, ${aTmp[5]}, ${aTmp[6]}, 1, ${aTmp[7]});"
+////        )
+////    }
+////    println("finish saving agent")
+////    println("start saving movementLog")
+////    for(mTmp in learningMovementLog) {
+////        // movement_logを記録
+////        SqlExecutor.executeSql(
+////                "INSERT INTO grid_world_1.movement_log (agent_id, x, y, step_counter) " +
+////                        "VALUES(${mTmp[0]}, ${mTmp[1]}, ${mTmp[2]}, ${mTmp[3]});"
+////        )
+////    }
+////    println("finish saving movementLog")
+////    println("start saving grids")
+////    for(gTmp in learningGridWorld) {
+////        // gridWorldを記録
+////        SqlExecutor.executeSql(
+////                "INSERT INTO grid_world_1.grid_world (agent_id, x, y, left_arrow, up_arrow, down_arrow, right_arrow) " +
+////                        "VALUES(${gTmp[0]}, ${gTmp[1]}, ${gTmp[2]}, ${gTmp[3]}, ${gTmp[4]}, ${gTmp[5]}, ${gTmp[6]});"
+////        )
+////    }
+////    println("finish saving grids")
+    // 学習終了
+    println("学習終了")
 
+    val goalBasic = 0
+
+    /**
+     * 環境(1-1) グリッドワールドの大きさ
+     *
+     * 学習しやすいグリッドワールドの広さは？
+     **/
+    /** グリッドワールドの広さを定義 */
+    // Todo: 各グリッドにおける成功確率
+    for (gridWidth in gridsMin..gridsMax) {
+        /** agent一覧を取得 */
+        // 条件
+        // グリッドの広さが一致
+        // ゴールの位置が一致
+        // 学習回数が一致
+        // ステップ回数が一致
+        // 学習フラグが立ってる
+        // 成功フラグが立ってる
+        // 100エージェント
+        /** 対象の学習済みエージェント */
+        var learnedAgents = mutableListOf<List<Int>>()
+        /** learnedAgentsから100のバリデーションを掛けてsuccessFlagが立ってたもの */
+        var successAgents = mutableListOf<List<Int>>()
+        /** learnedAgentsから100のバリデーションを掛けてsuccessFlagが立ってなかったもの */
+        var failedAgents = mutableListOf<List<Int>>()
+
+        /** 評価結果(Agent)を記録 */
+        var evaluatingAgents = mutableListOf<List<Int>>()
+        /** 評価結果(movementLog)を記録 */
+        var evaluatingMovementLog = mutableListOf<List<Int>>()
+        /** 評価結果(gridWorld)を記録 */
+        var evaluatingGridWorld = mutableListOf<List<Int>>()
+
+        /** エージェントを探す */
+        for (tmp in learningAgents) {
+            if (tmp[1] == gridWidth && tmp[2] == goalBasic && tmp[3] == goalBasic && tmp[4] == repeatBasicNumberOfLearning && tmp[5] == stepBasicLimits && tmp[7] == memoryTBasic) {
+                learnedAgents.add(tmp)
+            }
+        }
+        /** 統計情報 */
+        println("$gridWidth における学習済みエージェントの数は ${learnedAgents.size} です。")
+
+        /** 各グリッドにおける学習の成功確率(100エージェントのバリデーションを掛ける) */
+        for (agentIndex in 0 until 100) {
+            if (learnedAgents[agentIndex][6] == 1) {
+                successAgents.add(learnedAgents[agentIndex])
+            } else {
+                failedAgents.add(learnedAgents[agentIndex])
+            }
+        }
+        /** 統計情報 */
+        println("$gridWidth における学習の成功確率は ${successAgents.size} %です。")
+
+        /** 評価 */
+        /** グリッドワールドを生成 */
+        val initWorld = World(mutableMapOf())
+        // 初期化
+        initWorld.cells.init(gridWidth)
+        // arrowを設定
+        for (aTmp in successAgents) {
+            for (gTmp in learningGridWorld) {
+                // agentIdが一致するものを探す
+                if (gTmp[0] == aTmp[0]) {
+                    initWorld.cells[Position(gTmp[1], gTmp[2])]!!.left += gTmp[3]
+                    initWorld.cells[Position(gTmp[1], gTmp[2])]!!.up += gTmp[4]
+                    initWorld.cells[Position(gTmp[1], gTmp[2])]!!.down += gTmp[5]
+                    initWorld.cells[Position(gTmp[1], gTmp[2])]!!.right += gTmp[6]
+                }
+            }
+        }
+        // 評価
+        /** 考察時にエージェントの数が100になるように修正 */
+        for (adjustment in 1..(when (gridWidth) {
+            2 -> 34
+            3 -> 13
+            4 -> 7
+            5 -> 5
+            6, 7 -> 3
+            8, 9, 10 -> 2
+            else -> 1
+        })) {
+            /** ゴール位置 */
+            val goal = Position(goalBasic / gridWidth, goalBasic % gridWidth)
+            /** エージェントの初期位置を決定 */
+            val agentPositions = (0 until gridWidth * gridWidth).toMutableList()
+            // ゴールとの重複をなくす
+            agentPositions.removeAt(goalBasic)
+            // 候補の中から無作為に抽出
+            agentPositions.shuffle()
+            for(agentPosition in agentPositions) {
+                // エージェントを生成
+                val agent = Agent(initWorld, mutableListOf(Position(agentPosition / gridWidth, agentPosition % gridWidth)), false)
+
+                // 評価回数
+                for(repeatNum in 1..repeatBasicNumberOfLearning) {
+                    var isSuccess = 0
+                    // ステップ回数
+                    for(j in 1..stepBasicLimits) {
+                        // 移動
+                        agent.move()
+
+
+                        // ゴール時
+                        if (goal == agent.movementLog.last()) {
+                            isSuccess = 1
+                        }
+                    }
+
+                    // 規定の評価回数になったら記録を取る
+                    if(repeatNum == repeatBasicNumberOfLearning) {
+                        /** 記録 */
+                        // agentsを記録
+                        evaluatingAgents.add(listOf(agentCounter, gridWidth, goalBasic, goalBasic, repeatNum, stepBasicLimits, isSuccess))
+                        // movement_logを記録
+                        for(sqlMLog in 0 until agent.movementLog.size) {
+                            evaluatingMovementLog.add(listOf(agentCounter, agent.movementLog[sqlMLog].x, agent.movementLog[sqlMLog].y, sqlMLog))
+                        }
+                        // gridWorldを記録
+                        for(stepI in 0 until gridWidth) {
+                            for (stepJ in 0 until gridWidth) {
+                                evaluatingGridWorld.add(listOf(agentCounter, stepJ, stepI,
+                                        agent.grid.cells[Position(stepJ, stepI)]!!.left,
+                                        agent.grid.cells[Position(stepJ, stepI)]!!.up,
+                                        agent.grid.cells[Position(stepJ, stepI)]!!.down,
+                                        agent.grid.cells[Position(stepJ, stepI)]!!.right))
+                            }
+                        }
+                        // エージェントの通し番号を更新
+                        agentCounter++
+                    }
+
+
+                    /** エージェントの初期位置を再設定 */
+                    agent.resetPosition(gridWidth, goalBasic)
+                }
+            }
+        }
+
+        // 初期化
+        learnedAgents.clear()
+        successAgents.clear()
+        failedAgents.clear()
+
+        /** 統計情報 */
+        println("--------------")
+        println("$gridWidth における評価済みエージェントの数は ${evaluatingAgents.size} です。")
+
+        /** 各グリッドにおける評価の成功確率(100エージェントのバリデーションを掛ける) */
+        for (agentIndex in 0 until 100) {
+            if (evaluatingAgents[agentIndex][6] == 1) {
+                successAgents.add(evaluatingAgents[agentIndex])
+            } else {
+                failedAgents.add(evaluatingAgents[agentIndex])
+            }
+        }
+        /** 統計情報 */
+        println("$gridWidth における評価の成功確率は ${successAgents.size} %です。")
+        println("--------------")
+    }
 
     print("Hello Kotlin")
 }
