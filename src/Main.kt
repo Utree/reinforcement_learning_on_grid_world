@@ -226,49 +226,69 @@ fun main(args: Array<String>) {
                         } else {
                             stepBasicLimits
                         })) {
-                            /**
-                             * バリデーション
-                             *
-                             * 1. グリッドワールドの幅が5
-                             * 2. ゴールの位置が(0, 0)
-                             * 3. 学習の繰り返し回数が20
-                             *
-                             * のうち、いずれか2つに合致した時、実行
-                             **/
-                            if((gridWidth == gridsBasic && goalPosition == 0)
-                                    || (gridWidth == gridsBasic && repeatNum == repeatBasicNumberOfLearning)
-                                    || (goalPosition == 0 && repeatNum == repeatBasicNumberOfLearning)) {
-                                /** 学習開始 */
-                                var isSuccess: Int = 0
-                                for(stp in 1..step) {
-                                    // エージェントを移動
-                                    agent.move()
+                            /** Tの値を決定 */
+                            for(paramT in memoryTLower..memoryTUpper) {
+                                /**
+                                 * バリデーション
+                                 *
+                                 * 1. グリッドワールドの幅が5
+                                 * 2. ゴールの位置が(0, 0)
+                                 * 3. 学習の繰り返し回数が20
+                                 *
+                                 *
+                                 * のうち、いずれか2つに合致かつ、
+                                 * Tが10の時、実行
+                                 *
+                                 * 1かつ２かつ３のときも実行
+                                 **/
+                                if((gridWidth == gridsBasic && goalPosition == 0 && paramT == memoryTBasic)
+                                        || (gridWidth == gridsBasic && repeatNum == repeatBasicNumberOfLearning && paramT == memoryTBasic)
+                                        || (goalPosition == 0 && repeatNum == repeatBasicNumberOfLearning && paramT == memoryTBasic)
+                                        || (gridWidth == gridsBasic && goalPosition == 0 && repeatNum == repeatBasicNumberOfLearning)) {
+                                    /** 学習開始 */
+                                    var isSuccess = 0
+                                    for(stp in 1..step) {
+                                        // エージェントを移動
+                                        agent.move()
 
-                                    // ゴール時
-                                    if (goal == agent.movementLog.last()) {
-                                        isSuccess = 1
-                                        /** arrowを計算 */
-                                        for (mlg in 0 until agent.movementLog.size - 1) {
-                                            val newLength = reward * (stepUpperLimits - step + 1) / stepUpperLimits
-                                            // movementLogの前後関係から移動方向を取得
-                                            if (agent.movementLog[mlg].x > agent.movementLog[mlg + 1].x) {
-                                                // 右
-                                                agent.grid.cells[Position(agent.movementLog[mlg + 1].x, agent.movementLog[mlg + 1].y)]!!.right += newLength
-                                            } else if (agent.movementLog[mlg].x < agent.movementLog[mlg + 1].x) {
-                                                // 左
-                                                agent.grid.cells[Position(agent.movementLog[mlg + 1].x, agent.movementLog[mlg + 1].y)]!!.left += newLength
+                                        // ゴール時
+                                        if (goal == agent.movementLog.last()) {
+                                            // movementLogがTより小さかった時の挙動
+                                            val pT = if(agent.movementLog.size-1 < paramT) {
+                                                agent.movementLog.size-1
                                             } else {
-                                                if (agent.movementLog[mlg].y < agent.movementLog[mlg + 1].y) {
-                                                    // 上
-                                                    agent.grid.cells[Position(agent.movementLog[mlg + 1].x, agent.movementLog[mlg + 1].y)]!!.up += newLength
+                                                paramT
+                                            }
+
+                                            isSuccess = 1
+                                            /**
+                                             * arrowを計算 */
+                                            for (movementLogIndex in agent.movementLog.size-2 downTo 0) {
+                                                // ptは1からpTまでの値
+                                                val pt = pT - movementLogIndex
+                                                // 矢印の長さ
+                                                val newLength = reward * (pT - pt + 1) / pT
+
+
+                                                // movementLogの前後関係から移動方向を取得
+                                                if (agent.movementLog[movementLogIndex].x < agent.movementLog[movementLogIndex + 1].x) {
+                                                    // 右
+                                                    agent.grid.cells[Position(agent.movementLog[movementLogIndex].x, agent.movementLog[movementLogIndex].y)]!!.right += newLength
+                                                } else if (agent.movementLog[movementLogIndex].x > agent.movementLog[movementLogIndex + 1].x) {
+                                                    // 左
+                                                    agent.grid.cells[Position(agent.movementLog[movementLogIndex].x, agent.movementLog[movementLogIndex].y)]!!.left += newLength
                                                 } else {
-                                                    // 下
-                                                    agent.grid.cells[Position(agent.movementLog[mlg + 1].x, agent.movementLog[mlg + 1].y)]!!.down += newLength
+                                                    if (agent.movementLog[movementLogIndex].y > agent.movementLog[movementLogIndex + 1].y) {
+                                                        // 上
+                                                        agent.grid.cells[Position(agent.movementLog[movementLogIndex].x, agent.movementLog[movementLogIndex].y)]!!.up += newLength
+                                                    } else {
+                                                        // 下
+                                                        agent.grid.cells[Position(agent.movementLog[movementLogIndex].x, agent.movementLog[movementLogIndex].y)]!!.down += newLength
+                                                    }
                                                 }
                                             }
                                         }
                                     }
-                                }
                                 /** DBに記録 */
                                 // agentsを記録
                                 SqlExecutor.executeSql(

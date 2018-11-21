@@ -10,6 +10,7 @@ CREATE TABLE `agents` (
   `step_limit` INT NOT NULL COMMENT 'ステップ回数の上限',
   `is_succeed` INT NOT NULL COMMENT 'ゴール到達のフラグ true:1, false:0',
   `is_learning` INT NOT NULL COMMENT '学習と評価のフラグ 評価:1, 学習:0',
+  `T` INT NOT NULL COMMENT 'T',
   PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='エージェント';
 
