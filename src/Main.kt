@@ -395,7 +395,6 @@ fun main(args: Array<String>) {
         }
 
         /** 統計情報 */
-        println("$gridWidth における学習済みエージェントの数は ${learnedAgents.size} です。")
         println("$gridWidth における学習の成功確率は ${successAgents.size} %です。")
 
         /** 評価 */
@@ -474,7 +473,6 @@ fun main(args: Array<String>) {
                                         agent.grid.cells[Position(stepJ, stepI)]!!.right))
                             }
                         }
-                        
                         // エージェントの通し番号を更新
                         agentCounter++
                     }
@@ -490,10 +488,6 @@ fun main(args: Array<String>) {
         learnedAgents.clear()
         successAgents.clear()
         failedAgents.clear()
-
-        /** 統計情報 */
-        println("--------------")
-        println("$gridWidth における評価済みエージェントの数は ${evaluatingAgents.size} です。")
 
         /** 各グリッドにおける評価の成功確率(100エージェントのバリデーションを掛ける) */
         for (agentIndex in 0 until 100) {
