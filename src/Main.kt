@@ -148,13 +148,13 @@ fun main(args: Array<String>) {
     /**
      * グリッドワールドの広さ(横幅)
      *
-     * 基本パラメータ: 5
+     * 基本パラメータ: 7
      *
      * 考察(1-1)では2〜11までを実験する
      **/
     val gridsMax = 11
     val gridsMin = 2
-    val gridsBasic = 5
+    val gridsBasic = 7
     /**
      * ステップ(移動)回数の上限
      *
@@ -163,7 +163,7 @@ fun main(args: Array<String>) {
      * 考察(2-4),(3-3)では25-15までを実験する
      **/
     val stepUpperLimits = 25
-    val stepLowerLimits = 15
+    val stepLowerLimits = 1
     val stepBasicLimits = 20
     /** 報酬 */
     val reward = 10
@@ -175,7 +175,7 @@ fun main(args: Array<String>) {
      * 考察(2-5),(3-4)では25-15までを実験する
      **/
     val repeatUpperNumberOfLearning = 25
-    val repeatLowerNumberOfLearning = 15
+    val repeatLowerNumberOfLearning = 1
     val repeatBasicNumberOfLearning = 20
     /** デバッグフラグ */
     val debug = true
@@ -378,6 +378,10 @@ fun main(args: Array<String>) {
                 evaluatingAgents.add(tmp)
             }
         }
+
+        // シャッフル
+        evaluatingAgents.shuffle()
+
         /** 各グリッドにおける学習の成功確率(100エージェントのバリデーションを掛ける) */
         for (agentIndex in 0 until 100) {
             if (evaluatingAgents[agentIndex][6] == 1) {
@@ -465,6 +469,8 @@ fun main(args: Array<String>) {
 
         // 評価用に消去
         successAgents.clear()
+        // シャッフル
+        evaluatingAgents.shuffle()
 
         /** 各グリッドにおける評価の成功確率(100エージェントのバリデーションを掛ける) */
         for (agentIndex in 0 until 100) {
@@ -483,7 +489,6 @@ fun main(args: Array<String>) {
      * ゴールの位置と学習のしやすさに関係があるか?
      **/
     println("-- 環境(1-2) --")
-
     /** Cell番号を定義 */
     for(cellY in 0 until gridsBasic) {
         for (cellX in 0 until gridsBasic) {
@@ -494,7 +499,7 @@ fun main(args: Array<String>) {
             /** エージェントを探す */
             for (tmp in learningAgents) {
                 /**
-                 * 1. グリッドの広さ: 5
+                 * 1. グリッドの広さ: 7
                  * 2. ゴールの位置: n
                  * 3. 学習回数: 20
                  * 4. ステップ回数: 20
@@ -510,6 +515,10 @@ fun main(args: Array<String>) {
                     evaluatingAgents.add(tmp)
                 }
             }
+            // シャッフル
+            evaluatingAgents.shuffle()
+
+            println("flag: ${evaluatingAgents.size}")
 
             /** 各グリッドにおける学習の成功確率(100エージェントのバリデーションを掛ける) */
             for (agentIndex in 0 until 100) {
@@ -522,7 +531,7 @@ fun main(args: Array<String>) {
             evaluatingAgents.clear()
 
             /** 統計情報 */
-            println("($cellX,$cellY) における成功確率は ${successAgents.size} %です。")
+            println("($cellX,$cellY) における学習の成功確率は ${successAgents.size} %です。")
 
             /** 評価 */
             // グリッドワールドを生成
@@ -598,6 +607,8 @@ fun main(args: Array<String>) {
 
             // 評価用に消去
             successAgents.clear()
+            // シャッフル
+            evaluatingAgents.shuffle()
 
             /** 各グリッドにおける評価の成功確率(100エージェントのバリデーションを掛ける) */
             for (agentIndex in 0 until 100) {
@@ -606,13 +617,455 @@ fun main(args: Array<String>) {
                 }
             }
             /** 統計情報 */
-            println("($cellX,$cellY) における成功確率は ${successAgents.size} %です。")
+            println("($cellX,$cellY) における評価の成功確率は ${successAgents.size} %です。")
             println("--------------")
         }
     }
 
+    /**
+     * 学習(2-3) Tの大きさ
+     *
+     * 履歴の長さと学習しやすさに関係があるか？
+     */
+    println("-- 学習(2-3) --")
+    /** Tの値を定義 */
+    for(paramT in memoryTLower..memoryTUpper) {
+        // クリア
+        successAgents = mutableListOf()
+        evaluatingAgents = mutableListOf()
+
+        /** エージェントを探す */
+        for (tmp in learningAgents) {
+            /**
+             * 1. グリッドの広さ: 7
+             * 2. ゴールの位置: (0, 0)
+             * 3. 学習回数: 20
+             * 4. ステップ回数: 20
+             * 5. Tの値: n
+             * が一致するものを探す
+             */
+            if (tmp[1] == gridsBasic &&
+                    tmp[2] == goalBasic &&
+                    tmp[3] == goalBasic &&
+                    tmp[4] == repeatBasicNumberOfLearning &&
+                    tmp[5] == stepBasicLimits &&
+                    tmp[7] == paramT) {
+                evaluatingAgents.add(tmp)
+            }
+        }
+
+        // シャッフル
+        evaluatingAgents.shuffle()
+
+        /** 各グリッドにおける学習の成功確率(100エージェントのバリデーションを掛ける) */
+        for (agentIndex in 0 until 100) {
+            if (evaluatingAgents[agentIndex][6] == 1) {
+                successAgents.add(evaluatingAgents[agentIndex])
+            }
+        }
+
+        // 評価用に消去
+        evaluatingAgents.clear()
+
+        /** 統計情報 */
+        println("履歴の長さT:$paramT における学習の成功確率は ${successAgents.size} %です。")
+
+        /** 評価 */
+        // グリッドワールドを生成
+        val initWorld = World(mutableMapOf())
+        // 初期化
+        initWorld.cells.init(gridsBasic)
+        // arrowを設定
+        for (aTmp in successAgents) {
+            for (gTmp in learningGridWorld) {
+                // agentIdが一致するものを探す
+                if (gTmp[0] == aTmp[0]) {
+                    initWorld.cells[Position(gTmp[1], gTmp[2])]!!.left += gTmp[3]
+                    initWorld.cells[Position(gTmp[1], gTmp[2])]!!.up += gTmp[4]
+                    initWorld.cells[Position(gTmp[1], gTmp[2])]!!.down += gTmp[5]
+                    initWorld.cells[Position(gTmp[1], gTmp[2])]!!.right += gTmp[6]
+                }
+            }
+        }
+
+        // 評価用に消去
+        successAgents.clear()
+
+        /** 考察時にエージェントの数が100になるように修正 */
+        for (adjustment in 1..(when (gridsBasic) {
+            2 -> 34
+            3 -> 13
+            4 -> 7
+            5 -> 5
+            6, 7 -> 3
+            8, 9, 10 -> 2
+            else -> 1
+        })) {
+            /** ゴール位置 */
+            val goal = Position(goalBasic, goalBasic)
+            /** エージェントの初期位置を決定 */
+            val agentPositions = (0 until gridsBasic * gridsBasic).toMutableList()
+            // ゴールとの重複をなくす
+            agentPositions.removeAt(goalBasic)
+            // 候補の中から無作為に抽出
+            agentPositions.shuffle()
+            // エージェントの初期位置を決定
+            for(agentPosition in agentPositions) {
+                // エージェントを生成
+                val agent = Agent(initWorld, mutableListOf(Position(agentPosition % gridsBasic, agentPosition / gridsBasic)), false)
+
+                // 評価回数を定義
+                for(repeatNum in 1..repeatBasicNumberOfLearning) {
+                    // 成功フラグ
+                    var isSuccess = 0
+                    // ステップ回数を定義
+                    for(j in 1..stepBasicLimits) {
+                        // 移動
+                        agent.move()
 
 
+                        // ゴール時
+                        if (goal == agent.movementLog.last()) {
+                            isSuccess = 1
+                        }
+                    }
+
+                    // 規定の評価回数になったら記録を取る
+                    if(repeatNum == repeatBasicNumberOfLearning) {
+                        /** 記録 */
+                        // agentsを記録
+                        evaluatingAgents.add(listOf(agentCounter, gridsBasic, goalBasic, goalBasic, repeatNum, stepBasicLimits, isSuccess))
+                        // エージェントの通し番号を更新
+                        agentCounter++
+                    }
+
+                    /** エージェントの初期位置を再設定 */
+                    agent.resetPosition(gridsBasic, goalBasic)
+                }
+            }
+        }
+
+        // シャッフル
+        evaluatingAgents.shuffle()
+
+        /** 各グリッドにおける評価の成功確率(100エージェントのバリデーションを掛ける) */
+        for (agentIndex in 0 until 100) {
+            if (evaluatingAgents[agentIndex][6] == 1) {
+                successAgents.add(evaluatingAgents[agentIndex])
+            }
+        }
+        /** 統計情報 */
+        println("履歴の長さT:$paramT における評価の成功確率は ${successAgents.size} %です。")
+        println("--------------")
+    }
+
+    /**
+     * 学習(2-4) エージェントの移動距離
+     *
+     * エージェントの寿命はどのくらいが適切か？
+     */
+
+    /**
+     * 評価(3-3) エージェントの移動距離
+     *
+     * 寿命は長い, 短い, 同じのどれがよいか?
+     */
+    println("-- 学習(2-4) & 評価(3-3) --")
+    /** ステップ回数を定義 */
+    for(learningStep in stepLowerLimits..stepUpperLimits) {
+        // クリア
+        successAgents = mutableListOf()
+        evaluatingAgents = mutableListOf()
+
+        /** エージェントを探す */
+        for (tmp in learningAgents) {
+            /**
+             * 1. グリッドの広さ: 7
+             * 2. ゴールの位置: (0, 0)
+             * 3. 学習回数: 20
+             * 4. ステップ回数: n
+             * 5. Tの値: 7
+             * が一致するものを探す
+             */
+            if (tmp[1] == gridsBasic &&
+                    tmp[2] == goalBasic &&
+                    tmp[3] == goalBasic &&
+                    tmp[4] == repeatBasicNumberOfLearning &&
+                    tmp[5] == learningStep &&
+                    tmp[7] == memoryTBasic) {
+                evaluatingAgents.add(tmp)
+            }
+        }
+
+        // シャッフル
+        evaluatingAgents.shuffle()
+
+        /** 各グリッドにおける学習の成功確率(100エージェントのバリデーションを掛ける) */
+        for (agentIndex in 0 until 100) {
+            if (evaluatingAgents[agentIndex][6] == 1) {
+                successAgents.add(evaluatingAgents[agentIndex])
+            }
+        }
+
+        // 評価用に消去
+        evaluatingAgents.clear()
+
+        /** 統計情報 */
+        println("エージェントの寿命:$learningStep における学習の成功確率は ${successAgents.size} %です。")
+
+        /** 評価 */
+        // グリッドワールドを生成
+        val initWorld = World(mutableMapOf())
+        // 初期化
+        initWorld.cells.init(gridsBasic)
+        // arrowを設定
+        for (aTmp in successAgents) {
+            for (gTmp in learningGridWorld) {
+                // agentIdが一致するものを探す
+                if (gTmp[0] == aTmp[0]) {
+                    initWorld.cells[Position(gTmp[1], gTmp[2])]!!.left += gTmp[3]
+                    initWorld.cells[Position(gTmp[1], gTmp[2])]!!.up += gTmp[4]
+                    initWorld.cells[Position(gTmp[1], gTmp[2])]!!.down += gTmp[5]
+                    initWorld.cells[Position(gTmp[1], gTmp[2])]!!.right += gTmp[6]
+                }
+            }
+        }
+
+        // 評価用に消去
+        successAgents.clear()
+
+        /** 評価のステップ回数を定義*/
+        for(evaluateStep in stepLowerLimits..stepUpperLimits) {
+            /** 考察時にエージェントの数が100になるように修正 */
+            for (adjustment in 1..(when (gridsBasic) {
+                2 -> 34
+                3 -> 13
+                4 -> 7
+                5 -> 5
+                6, 7 -> 3
+                8, 9, 10 -> 2
+                else -> 1
+            })) {
+                /** ゴール位置 */
+                val goal = Position(goalBasic, goalBasic)
+                /** エージェントの初期位置を決定 */
+                val agentPositions = (0 until gridsBasic * gridsBasic).toMutableList()
+                // ゴールとの重複をなくす
+                agentPositions.removeAt(goalBasic)
+                // 候補の中から無作為に抽出
+                agentPositions.shuffle()
+                // エージェントの初期位置を決定
+                for(agentPosition in agentPositions) {
+                    // エージェントを生成
+                    val agent = Agent(initWorld, mutableListOf(Position(agentPosition % gridsBasic, agentPosition / gridsBasic)), false)
+
+                    // 評価回数を繰り返す
+                    for(repeatNum in 1..repeatBasicNumberOfLearning) {
+                        // 成功フラグ
+                        var isSuccess = 0
+                        // ステップ回数を繰り返す
+                        for(j in 1..evaluateStep) {
+                            // 移動
+                            agent.move()
+
+
+                            // ゴール時
+                            if (goal == agent.movementLog.last()) {
+                                isSuccess = 1
+                            }
+                        }
+
+                        // 規定の評価回数になったら記録を取る
+                        if(repeatNum == repeatBasicNumberOfLearning) {
+                            /** 記録 */
+                            // agentsを記録
+                            evaluatingAgents.add(listOf(agentCounter, gridsBasic, goalBasic, goalBasic, repeatNum, stepBasicLimits, isSuccess))
+                            // エージェントの通し番号を更新
+                            agentCounter++
+                        }
+
+                        /** エージェントの初期位置を再設定 */
+                        agent.resetPosition(gridsBasic, goalBasic)
+                    }
+                }
+            }
+
+            // シャッフル
+            evaluatingAgents.shuffle()
+
+
+            /** デバッグ */
+            println("評価エージェントの数: ${evaluatingAgents.size}")
+
+            /** 各グリッドにおける評価の成功確率(100エージェントのバリデーションを掛ける) */
+            for (agentIndex in 0 until 100) {
+                if (evaluatingAgents[agentIndex][6] == 1) {
+                    successAgents.add(evaluatingAgents[agentIndex])
+                }
+            }
+
+            /** 統計情報 */
+            println("エージェントの寿命 L:$learningStep E:$evaluateStep における評価の成功確率は ${successAgents.size} %です。")
+            println("--------------")
+
+            // 評価用に消去
+            evaluatingAgents.clear()
+            successAgents.clear()
+        }
+    }
+
+    /**
+     * 学習(2-5) 学習の繰り返し回数
+     *
+     * 学習に必要なエージェント数は？
+     */
+
+    /**
+     * 評価(3-4) 評価の繰り返し回数
+     *
+     * 少ないときと多いときで傾向が変わるのか?
+     */
+    println("-- 学習(2-5) & 評価(3-4) --")
+    /** 学習の繰り返し回数を定義 */
+    for(repeatNumberOfLearning in repeatLowerNumberOfLearning..repeatUpperNumberOfLearning) {
+        // クリア
+        successAgents = mutableListOf()
+        evaluatingAgents = mutableListOf()
+
+        /** エージェントを探す */
+        for (tmp in learningAgents) {
+            /**
+             * 1. グリッドの広さ: 7
+             * 2. ゴールの位置: (0, 0)
+             * 3. 学習回数: n
+             * 4. ステップ回数: 20
+             * 5. Tの値: 7
+             * が一致するものを探す
+             */
+            if (tmp[1] == gridsBasic &&
+                    tmp[2] == goalBasic &&
+                    tmp[3] == goalBasic &&
+                    tmp[4] == repeatNumberOfLearning &&
+                    tmp[5] == stepBasicLimits &&
+                    tmp[7] == memoryTBasic) {
+                evaluatingAgents.add(tmp)
+            }
+        }
+
+        // シャッフル
+        evaluatingAgents.shuffle()
+
+        /** デバッグ */
+        println("エージェントの数: ${evaluatingAgents.size}")
+
+        /** 各グリッドにおける学習の成功確率(100エージェントのバリデーションを掛ける) */
+        for (agentIndex in 0 until 100) {
+            if (evaluatingAgents[agentIndex][6] == 1) {
+                successAgents.add(evaluatingAgents[agentIndex])
+            }
+        }
+
+        // 評価用に消去
+        evaluatingAgents.clear()
+
+        /** 統計情報 */
+        println("--------------")
+        println("学習回数回数:$repeatNumberOfLearning における学習の成功確率は ${successAgents.size} %です。")
+
+        /** 評価 */
+        // グリッドワールドを生成
+        val initWorld = World(mutableMapOf())
+        // 初期化
+        initWorld.cells.init(gridsBasic)
+        // arrowを設定
+        for (aTmp in successAgents) {
+            for (gTmp in learningGridWorld) {
+                // agentIdが一致するものを探す
+                if (gTmp[0] == aTmp[0]) {
+                    initWorld.cells[Position(gTmp[1], gTmp[2])]!!.left += gTmp[3]
+                    initWorld.cells[Position(gTmp[1], gTmp[2])]!!.up += gTmp[4]
+                    initWorld.cells[Position(gTmp[1], gTmp[2])]!!.down += gTmp[5]
+                    initWorld.cells[Position(gTmp[1], gTmp[2])]!!.right += gTmp[6]
+                }
+            }
+        }
+
+        // 評価用に消去
+        successAgents.clear()
+
+        /** 評価の繰り返し回数を定義 */
+        for(repeatNumberOfEvaluate in repeatLowerNumberOfLearning..repeatUpperNumberOfLearning) {
+            /** 考察時にエージェントの数が100になるように修正 */
+            for (adjustment in 1..(when (gridsBasic) {
+                2 -> 34
+                3 -> 13
+                4 -> 7
+                5 -> 5
+                6, 7 -> 3
+                8, 9, 10 -> 2
+                else -> 1
+            })) {
+                /** ゴール位置 */
+                val goal = Position(goalBasic, goalBasic)
+                /** エージェントの初期位置を決定 */
+                val agentPositions = (0 until gridsBasic * gridsBasic).toMutableList()
+                // ゴールとの重複をなくす
+                agentPositions.removeAt(goalBasic)
+                // 候補の中から無作為に抽出
+                agentPositions.shuffle()
+                // エージェントの初期位置を決定
+                for(agentPosition in agentPositions) {
+                    // エージェントを生成
+                    val agent = Agent(initWorld, mutableListOf(Position(agentPosition % gridsBasic, agentPosition / gridsBasic)), false)
+
+                    // 評価回数を定義
+                    for(repeatNum in 1..repeatNumberOfEvaluate) {
+                        // 成功フラグ
+                        var isSuccess = 0
+                        // ステップ回数を定義
+                        for(j in 1..stepBasicLimits) {
+                            // 移動
+                            agent.move()
+
+
+                            // ゴール時
+                            if (goal == agent.movementLog.last()) {
+                                isSuccess = 1
+                            }
+                        }
+
+                        // 規定の評価回数になったら記録を取る
+                        if(repeatNum == repeatNumberOfEvaluate) {
+                            /** 記録 */
+                            // agentsを記録
+                            evaluatingAgents.add(listOf(agentCounter, gridsBasic, goalBasic, goalBasic, repeatNum, stepBasicLimits, isSuccess))
+                            // エージェントの通し番号を更新
+                            agentCounter++
+                        }
+
+                        /** エージェントの初期位置を再設定 */
+                        agent.resetPosition(gridsBasic, goalBasic)
+                    }
+                }
+            }
+
+            // シャッフル
+            evaluatingAgents.shuffle()
+
+            /** 各グリッドにおける評価の成功確率(100エージェントのバリデーションを掛ける) */
+            for (agentIndex in 0 until 100) {
+                if (evaluatingAgents[agentIndex][6] == 1) {
+                    successAgents.add(evaluatingAgents[agentIndex])
+                }
+            }
+            /** 統計情報 */
+            println("繰り返し回数 L:$repeatNumberOfLearning E:$repeatNumberOfEvaluate における評価の成功確率は ${successAgents.size} %です。")
+
+            // 評価用に消去
+            evaluatingAgents.clear()
+            successAgents.clear()
+        }
+    }
 
     print("Hello Kotlin")
 }
