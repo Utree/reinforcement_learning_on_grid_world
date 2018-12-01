@@ -1,4 +1,5 @@
 import java.util.*
+import java.io.File
 
 /**
  *  gridのcell
@@ -142,64 +143,170 @@ class Agent(val grid: World, var movementLog: MutableList<Position>, private val
 }
 
 /**
+ * グリッドワールドの広さ(横幅)
+ *
+ * 基本パラメータ: 7
+ *
+ * 考察(1-1)では2〜11までを実験する
+ **/
+const val gridsMax = 11
+const val gridsMin = 2
+const val gridsBasic = 7
+/**
+ * ステップ(移動)回数の上限
+ *
+ * 基本パラメータ: 20
+ *
+ * 考察(2-4),(3-3)では1-25までを実験する
+ **/
+const val stepUpperLimits = 25
+const val stepLowerLimits = 1
+const val stepBasicLimits = 20
+/** 報酬 */
+const val reward = 10
+/**
+ * 学習の繰り返し回数
+ *
+ * 基本パラメータ: 20
+ *
+ * 考察(2-5),(3-4)では1-25までを実験する
+ **/
+const val repeatUpperNumberOfLearning = 25
+const val repeatLowerNumberOfLearning = 1
+const val repeatBasicNumberOfLearning = 20
+/** 忘却 */
+const val memoryTUpper = 10
+const val memoryTLower = 1
+const val memoryTBasic = 7
+/** ゴールの基本位置 */
+const val goalBasic = 0
+/**
+ * agentの通し番号
+ *
+ * 注意: 保存するDBにはデータが入っていないことを確認
+ */
+var agentCounter = 1
+
+/** 学習結果(Agent)を記録 */
+var learningAgents = mutableListOf<List<Int>>()
+/** 学習結果(movementLog)を記録 */
+var learningMovementLog = mutableListOf<List<Int>>()
+/** 学習結果(gridWorld)を記録 */
+var learningGridWorld = mutableListOf<List<Int>>()
+
+/** 出力用jsファイル */
+val jsFile = File("./out/web/chart_data.js").absoluteFile
+/** 環境(1-2) 学習時 結果CSS */
+val css12LearningFile = File("./out/web/grid_data_1_2_learning.css").absoluteFile
+/** 環境(1-2) 評価時 結果CSS */
+val css12EvaluatingFile = File("./out/web/grid_data_1_2_evaluating.css").absoluteFile
+/** 評価(3-3) 結果CSS */
+val css33File = File("./out/web/grid_data_3_3.css").absoluteFile
+/** 評価(3-4) 結果CSS */
+val css34File = File("./out/web/grid_data_3_4.css").absoluteFile
+
+
+
+/**
  * エントリーポイント
  */
 fun main(args: Array<String>) {
     /**
-     * グリッドワールドの広さ(横幅)
+     * 環境(1-1) グリッドワールドの大きさ
      *
-     * 基本パラメータ: 7
-     *
-     * 考察(1-1)では2〜11までを実験する
+     * 学習しやすいグリッドワールドの広さは？
      **/
-    val gridsMax = 11
-    val gridsMin = 2
-    val gridsBasic = 7
+    println("-- 環境(1-1) --")
+    /** 学習 */
+    learn(1)
+    /** 評価 */
+    evaluate11()
+    /** クリア */
+    agentCounter = 1
+    learningAgents.clear()
+    learningMovementLog.clear()
+    learningGridWorld.clear()
+
     /**
-     * ステップ(移動)回数の上限
+     * 環境(1-2) ゴールの位置
      *
-     * 基本パラメータ: 20
-     *
-     * 考察(2-4),(3-3)では25-15までを実験する
+     * ゴールの位置と学習のしやすさに関係があるか?
      **/
-    val stepUpperLimits = 25
-    val stepLowerLimits = 1
-    val stepBasicLimits = 20
-    /** 報酬 */
-    val reward = 10
+    println("-- 環境(1-2) --")
+    /** 学習 */
+    learn(2)
+    /** 評価 */
+    evaluate12()
+    /** クリア */
+    agentCounter = 1
+    learningAgents.clear()
+    learningMovementLog.clear()
+    learningGridWorld.clear()
+
     /**
-     * 学習の繰り返し回数
+     * 学習(2-3) Tの大きさ
      *
-     * 基本パラメータ: 20
-     *
-     * 考察(2-5),(3-4)では25-15までを実験する
-     **/
-    val repeatUpperNumberOfLearning = 25
-    val repeatLowerNumberOfLearning = 1
-    val repeatBasicNumberOfLearning = 20
-    /** デバッグフラグ */
-    val debug = true
-    /** 忘却 */
-    val memoryTUpper = 10
-    val memoryTLower = 1
-    val memoryTBasic = 7
-    /** ゴールの基本位置 */
-    val goalBasic = 0
-    /**
-     * agentの通し番号
-     *
-     * 注意: 保存するDBにはデータが入っていないことを確認
+     * 履歴の長さと学習しやすさに関係があるか？
      */
-    var agentCounter = 1
-    // Todo: DBからフィールド数を取得し、agentCounterを更新
+    println("-- 学習(2-3) --")
+    /** 学習 */
+    learn(3)
+    /** 評価 */
+    evaluate23()
+    /** クリア */
+    agentCounter = 1
+    learningAgents.clear()
+    learningMovementLog.clear()
+    learningGridWorld.clear()
 
-    /** 学習結果(Agent)を記録 */
-    var learningAgents = mutableListOf<List<Int>>()
-    /** 学習結果(movementLog)を記録 */
-    var learningMovementLog = mutableListOf<List<Int>>()
-    /** 学習結果(gridWorld)を記録 */
-    var learningGridWorld = mutableListOf<List<Int>>()
+    /**
+     * 学習(2-4) エージェントの移動距離
+     *
+     * エージェントの寿命はどのくらいが適切か？
+     */
 
+    /**
+     * 評価(3-3) エージェントの移動距離
+     *
+     * 寿命は長い, 短い, 同じのどれがよいか?
+     */
+    println("-- 学習(2-4) & 評価(3-3) --")
+    /** 学習 */
+    learn(4)
+    /** 評価 */
+    evaluate2433()
+    /** クリア */
+    agentCounter = 1
+    learningAgents.clear()
+    learningMovementLog.clear()
+    learningGridWorld.clear()
+
+    /**
+     * 学習(2-5) 学習の繰り返し回数
+     *
+     * 学習に必要なエージェント数は？
+     */
+
+    /**
+     * 評価(3-4) 評価の繰り返し回数
+     *
+     * 少ないときと多いときで傾向が変わるのか?
+     */
+    println("-- 学習(2-5) & 評価(3-4) --")
+    /** 学習 */
+    learn(5)
+    /** 評価 */
+    evaluate2534()
+    /** クリア */
+    agentCounter = 1
+    learningAgents.clear()
+    learningMovementLog.clear()
+    learningGridWorld.clear()
+
+    print("Hello Kotlin")
+}
+
+fun learn(switch: Int) {
     /** グリッドワールドの広さを定義 */
     for (gridWidth in gridsMin..gridsMax) {
         /** ゴール位置を決定 */
@@ -235,37 +342,33 @@ fun main(args: Array<String>) {
                     // エージェントのインスタンスを生成
                     val agent = Agent(initWorld, mutableListOf(Position(agentPosition % gridWidth, agentPosition / gridWidth)), true)
 
-                    /** 学習回数を決定 */
-                    for (repeatNum in 1..(if(gridWidth == gridsBasic && goalPosition == goalBasic) {
-                        repeatUpperNumberOfLearning
+
+                    /** ステップ回数を決定 */
+                    for (step in stepLowerLimits..(if(gridWidth == gridsBasic && goalPosition == goalBasic) {
+                        stepUpperLimits
                     } else {
-                        repeatBasicNumberOfLearning
+                        stepBasicLimits
                     })) {
-                        /** ステップ回数を決定 */
-                        for (step in stepLowerLimits..(if(gridWidth == gridsBasic && goalPosition == goalBasic) {
-                            stepUpperLimits
-                        } else {
-                            stepBasicLimits
-                        })) {
-                            /** Tの値を決定 */
-                            for(paramT in memoryTLower..memoryTUpper) {
+                        /** Tの値を決定 */
+                        for(paramT in memoryTLower..memoryTUpper) {
+                            /** 学習回数を決定 */
+                            for (repeatNum in 1..(if(gridWidth == gridsBasic && goalPosition == goalBasic) {
+                                repeatUpperNumberOfLearning
+                            } else {
+                                repeatBasicNumberOfLearning
+                            })) {
+
                                 /**
                                  * バリデーション
-                                 *
-                                 * 1. グリッドワールドの幅が5
-                                 * 2. ゴールの位置が(0, 0)
-                                 * 3. 学習の繰り返し回数が20
-                                 *
-                                 *
-                                 * のうち、いずれか2つに合致かつ、
-                                 * Tが10の時、実行
-                                 *
-                                 * 1かつ２かつ３のときも実行
                                  **/
-                                if((gridWidth == gridsBasic && goalPosition == goalBasic && paramT == memoryTBasic)
-                                        || (gridWidth == gridsBasic && repeatNum == repeatBasicNumberOfLearning && paramT == memoryTBasic)
-                                        || (goalPosition == goalBasic && repeatNum == repeatBasicNumberOfLearning && paramT == memoryTBasic)
-                                        || (gridWidth == gridsBasic && goalPosition == goalBasic && repeatNum == repeatBasicNumberOfLearning)) {
+                                if(when(switch) {
+                                            1 -> (goalPosition == goalBasic && repeatNum == repeatBasicNumberOfLearning && step == stepBasicLimits && paramT == memoryTBasic)
+                                            2 -> (gridWidth == gridsBasic && repeatNum == repeatBasicNumberOfLearning && step == stepBasicLimits && paramT == memoryTBasic)
+                                            3 -> (gridWidth == gridsBasic && goalPosition == goalBasic && repeatNum == repeatBasicNumberOfLearning && step == stepBasicLimits)
+                                            4 -> (gridWidth == gridsBasic && goalPosition == goalBasic && repeatNum == repeatBasicNumberOfLearning && paramT == memoryTBasic)
+                                            else -> (gridWidth == gridsBasic && goalPosition == goalBasic && step == stepBasicLimits && paramT == memoryTBasic)
+
+                                        }) {
                                     // 成功フラグ
                                     var isSuccess = 0
                                     // ステップ数だけ繰り返す
@@ -338,24 +441,19 @@ fun main(args: Array<String>) {
             }
         }
     }
-    // 学習終了
-    println("学習終了")
+}
 
-    /** 評価開始 */
+fun evaluate11() {
     /** 評価Agent 統計情報を出力するための一時保存用 */
     var evaluatingAgents: List<List<Int>>
     /** learnedAgentsから100のバリデーションを掛けてsuccessFlagが立ってたもの 統計情報を出力するための一時保存用 */
     var successAgents: List<List<Int>>
+    /** 結果出力用 */
+    var resultLearningPercentage: List<Int> = mutableListOf()
+    var resultEvaluatingPercentage: List<Int> = mutableListOf()
 
-    /**
-     * 環境(1-1) グリッドワールドの大きさ
-     *
-     * 学習しやすいグリッドワールドの広さは？
-     **/
-    println("-- 環境(1-1) --")
-    /** グリッドワールドの広さを定義 */
     for (gridWidth in gridsMin..gridsMax) {
-        /** エージェントを初期化 */
+        // クリア
         successAgents = mutableListOf()
         evaluatingAgents = mutableListOf()
 
@@ -394,6 +492,8 @@ fun main(args: Array<String>) {
 
         /** 統計情報 */
         println("グリッド幅:$gridWidth における学習の成功確率は ${successAgents.size} %です。")
+        resultLearningPercentage += successAgents.size
+
 
         /** 評価 */
         // グリッドワールドを生成
@@ -481,14 +581,21 @@ fun main(args: Array<String>) {
         /** 統計情報 */
         println("グリッド幅:$gridWidth における評価の成功確率は ${successAgents.size} %です。")
         println("--------------")
+        resultEvaluatingPercentage += successAgents.size
     }
 
-    /**
-     * 環境(1-2) ゴールの位置
-     *
-     * ゴールの位置と学習のしやすさに関係があるか?
-     **/
-    println("-- 環境(1-2) --")
+    /** 結果出力 */
+    jsFile.appendText("// 環境(1-1) グリッドワールドの大きさ\n")
+    jsFile.appendText("var ctx_0_learn_data = $resultLearningPercentage;\n")
+    jsFile.appendText("var ctx_0_evaluate_data = $resultEvaluatingPercentage;\n")
+}
+
+fun evaluate12() {
+    /** 評価Agent 統計情報を出力するための一時保存用 */
+    var evaluatingAgents: List<List<Int>>
+    /** learnedAgentsから100のバリデーションを掛けてsuccessFlagが立ってたもの 統計情報を出力するための一時保存用 */
+    var successAgents: List<List<Int>>
+
     /** Cell番号を定義 */
     for(cellY in 0 until gridsBasic) {
         for (cellX in 0 until gridsBasic) {
@@ -518,8 +625,6 @@ fun main(args: Array<String>) {
             // シャッフル
             evaluatingAgents.shuffle()
 
-            println("flag: ${evaluatingAgents.size}")
-
             /** 各グリッドにおける学習の成功確率(100エージェントのバリデーションを掛ける) */
             for (agentIndex in 0 until 100) {
                 if (evaluatingAgents[agentIndex][6] == 1) {
@@ -531,7 +636,15 @@ fun main(args: Array<String>) {
             evaluatingAgents.clear()
 
             /** 統計情報 */
-            println("($cellX,$cellY) における学習の成功確率は ${successAgents.size} %です。")
+            css12LearningFile.appendText("#table_1_2_learning .table_data_x_$cellX.table_data_y_$cellY {\n\t" +
+                    when(successAgents.size) {
+                        in 60..100 -> "background-color: firebrick;"
+                        in 50..59 -> "background-color: crimson;"
+                        in 40..49 -> "background-color: tomato;"
+                        in 30..39 -> "background-color: darkorange;"
+                        else -> "background-color: gold;"
+                    } +
+                    "\n}\n")
 
             /** 評価 */
             // グリッドワールドを生成
@@ -619,15 +732,28 @@ fun main(args: Array<String>) {
             /** 統計情報 */
             println("($cellX,$cellY) における評価の成功確率は ${successAgents.size} %です。")
             println("--------------")
+            css12EvaluatingFile.appendText("#table_1_2_evaluating .table_data_x_$cellX.table_data_y_$cellY {\n\t" +
+                    when(successAgents.size) {
+                        100 -> "background-color: darkslategray;"
+                        in 90..99 -> "background-color: darkgreen;"
+                        in 80..89 -> "background-color: forestgreen;"
+                        in 70..79 -> "background-color: mediumaquamarine;"
+                        else -> "background-color: GreenYellow;"
+                    } +
+                    "\n}\n")
         }
     }
+}
 
-    /**
-     * 学習(2-3) Tの大きさ
-     *
-     * 履歴の長さと学習しやすさに関係があるか？
-     */
-    println("-- 学習(2-3) --")
+fun evaluate23() {
+    /** 評価Agent 統計情報を出力するための一時保存用 */
+    var evaluatingAgents: List<List<Int>>
+    /** learnedAgentsから100のバリデーションを掛けてsuccessFlagが立ってたもの 統計情報を出力するための一時保存用 */
+    var successAgents: List<List<Int>>
+    /** 結果出力用 */
+    var resultLearningPercentage: List<Int> = mutableListOf()
+    var resultEvaluatingPercentage: List<Int> = mutableListOf()
+
     /** Tの値を定義 */
     for(paramT in memoryTLower..memoryTUpper) {
         // クリア
@@ -669,6 +795,7 @@ fun main(args: Array<String>) {
 
         /** 統計情報 */
         println("履歴の長さT:$paramT における学習の成功確率は ${successAgents.size} %です。")
+        resultLearningPercentage += successAgents.size
 
         /** 評価 */
         // グリッドワールドを生成
@@ -757,20 +884,23 @@ fun main(args: Array<String>) {
         /** 統計情報 */
         println("履歴の長さT:$paramT における評価の成功確率は ${successAgents.size} %です。")
         println("--------------")
+        resultEvaluatingPercentage += successAgents.size
     }
 
-    /**
-     * 学習(2-4) エージェントの移動距離
-     *
-     * エージェントの寿命はどのくらいが適切か？
-     */
+    /** 結果出力 */
+    jsFile.appendText("// 学習(2-3) Tの大きさ\n")
+    jsFile.appendText("var ctx_1_learn_data = $resultLearningPercentage;\n")
+    jsFile.appendText("var ctx_1_evaluate_data = $resultEvaluatingPercentage;\n")
+}
 
-    /**
-     * 評価(3-3) エージェントの移動距離
-     *
-     * 寿命は長い, 短い, 同じのどれがよいか?
-     */
-    println("-- 学習(2-4) & 評価(3-3) --")
+fun evaluate2433() {
+    /** 評価Agent 統計情報を出力するための一時保存用 */
+    var evaluatingAgents: List<List<Int>>
+    /** learnedAgentsから100のバリデーションを掛けてsuccessFlagが立ってたもの 統計情報を出力するための一時保存用 */
+    var successAgents: List<List<Int>>
+    /** 結果出力用 */
+    var resultLearningPercentage: List<Int> = mutableListOf()
+
     /** ステップ回数を定義 */
     for(learningStep in stepLowerLimits..stepUpperLimits) {
         // クリア
@@ -812,6 +942,7 @@ fun main(args: Array<String>) {
 
         /** 統計情報 */
         println("エージェントの寿命:$learningStep における学習の成功確率は ${successAgents.size} %です。")
+        resultLearningPercentage += successAgents.size
 
         /** 評価 */
         // グリッドワールドを生成
@@ -893,10 +1024,6 @@ fun main(args: Array<String>) {
             // シャッフル
             evaluatingAgents.shuffle()
 
-
-            /** デバッグ */
-            println("評価エージェントの数: ${evaluatingAgents.size}")
-
             /** 各グリッドにおける評価の成功確率(100エージェントのバリデーションを掛ける) */
             for (agentIndex in 0 until 100) {
                 if (evaluatingAgents[agentIndex][6] == 1) {
@@ -907,6 +1034,15 @@ fun main(args: Array<String>) {
             /** 統計情報 */
             println("エージェントの寿命 L:$learningStep E:$evaluateStep における評価の成功確率は ${successAgents.size} %です。")
             println("--------------")
+            css33File.appendText("#table_3_3_evaluating .table_data_x_$learningStep.table_data_y_$evaluateStep {\n\t" +
+                    when(successAgents.size) {
+                        100 -> "background-color: darkslategray;"
+                        in 90..99 -> "background-color: darkgreen;"
+                        in 80..89 -> "background-color: forestgreen;"
+                        in 70..79 -> "background-color: mediumaquamarine;"
+                        else -> "background-color: GreenYellow;"
+                    } +
+                    "\n}\n")
 
             // 評価用に消去
             evaluatingAgents.clear()
@@ -914,18 +1050,19 @@ fun main(args: Array<String>) {
         }
     }
 
-    /**
-     * 学習(2-5) 学習の繰り返し回数
-     *
-     * 学習に必要なエージェント数は？
-     */
+    /** 結果出力 */
+    jsFile.appendText("学習(2-4) エージェントの移動距離\n")
+    jsFile.appendText("var ctx_2_learn_data = $resultLearningPercentage;\n")
+}
 
-    /**
-     * 評価(3-4) 評価の繰り返し回数
-     *
-     * 少ないときと多いときで傾向が変わるのか?
-     */
-    println("-- 学習(2-5) & 評価(3-4) --")
+fun evaluate2534() {
+    /** 評価Agent 統計情報を出力するための一時保存用 */
+    var evaluatingAgents: List<List<Int>>
+    /** learnedAgentsから100のバリデーションを掛けてsuccessFlagが立ってたもの 統計情報を出力するための一時保存用 */
+    var successAgents: List<List<Int>>
+    /** 結果出力用 */
+    var resultLearningPercentage: List<Int> = mutableListOf()
+
     /** 学習の繰り返し回数を定義 */
     for(repeatNumberOfLearning in repeatLowerNumberOfLearning..repeatUpperNumberOfLearning) {
         // クリア
@@ -955,9 +1092,6 @@ fun main(args: Array<String>) {
         // シャッフル
         evaluatingAgents.shuffle()
 
-        /** デバッグ */
-        println("エージェントの数: ${evaluatingAgents.size}")
-
         /** 各グリッドにおける学習の成功確率(100エージェントのバリデーションを掛ける) */
         for (agentIndex in 0 until 100) {
             if (evaluatingAgents[agentIndex][6] == 1) {
@@ -971,6 +1105,7 @@ fun main(args: Array<String>) {
         /** 統計情報 */
         println("--------------")
         println("学習回数回数:$repeatNumberOfLearning における学習の成功確率は ${successAgents.size} %です。")
+        resultLearningPercentage += successAgents.size
 
         /** 評価 */
         // グリッドワールドを生成
@@ -1013,6 +1148,7 @@ fun main(args: Array<String>) {
                 agentPositions.removeAt(goalBasic)
                 // 候補の中から無作為に抽出
                 agentPositions.shuffle()
+
                 // エージェントの初期位置を決定
                 for(agentPosition in agentPositions) {
                     // エージェントを生成
@@ -1060,6 +1196,15 @@ fun main(args: Array<String>) {
             }
             /** 統計情報 */
             println("繰り返し回数 L:$repeatNumberOfLearning E:$repeatNumberOfEvaluate における評価の成功確率は ${successAgents.size} %です。")
+            css34File.appendText("#table_3_4_evaluating .table_data_x_$repeatNumberOfLearning.table_data_y_$repeatNumberOfEvaluate {\n\t" +
+                    when(successAgents.size) {
+                        100 -> "background-color: darkslategray;"
+                        in 90..99 -> "background-color: darkgreen;"
+                        in 80..89 -> "background-color: forestgreen;"
+                        in 70..79 -> "background-color: mediumaquamarine;"
+                        else -> "background-color: GreenYellow;"
+                    } +
+                    "\n}\n")
 
             // 評価用に消去
             evaluatingAgents.clear()
@@ -1067,5 +1212,7 @@ fun main(args: Array<String>) {
         }
     }
 
-    print("Hello Kotlin")
+    /** 結果出力 */
+    jsFile.appendText("// 学習(2-5) 学習の繰り返し回数\n")
+    jsFile.appendText("var ctx_3_learn_data = $resultLearningPercentage;\n")
 }
