@@ -1,4 +1,5 @@
 .DS_Store
+report.pages
 .idea/shelf
 /android.tests.dependencies
 /confluence/target
