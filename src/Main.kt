@@ -204,7 +204,8 @@ val css12EvaluatingFile = File("./out/web/grid_data_1_2_evaluating.css").absolut
 val css33File = File("./out/web/grid_data_3_3.css").absoluteFile
 /** 評価(3-4) 結果CSS */
 val css34File = File("./out/web/grid_data_3_4.css").absoluteFile
-
+/** 結果報告(5-2) 結果TEXT */
+val textFile = File("./out/web/5_2.html").absoluteFile
 
 
 /**
@@ -512,6 +513,55 @@ fun evaluate11() {
                 }
             }
         }
+
+        /** 結果報告(5-2) */
+        if(gridWidth == gridsBasic) {
+            textFile.appendText("<!DOCTYPE html>\n" +
+                    "<html>\n" +
+                    "  <head>\n" +
+                    "    <meta charset=\"utf-8\">\n" +
+                    "    <title></title>\n" +
+                    "    <link rel=\"stylesheet\" href=\"style.css\">\n" +
+                    "  </head>\n" +
+                    "  <body>\n" +
+                    "<table id=\"table_5_2_learning\">\n" +
+                    "  <tr>\n" +
+                    "    <td class=\"table_header_vertical table_header_horizontal\"></td>\n" +
+                    "    <td class=\"table_header_horizontal\">x:0</td>\n" +
+                    "    <td class=\"table_header_horizontal\">x:1</td>\n" +
+                    "    <td class=\"table_header_horizontal\">x:2</td>\n" +
+                    "    <td class=\"table_header_horizontal\">x:3</td>\n" +
+                    "    <td class=\"table_header_horizontal\">x:4</td>\n" +
+                    "    <td class=\"table_header_horizontal\">x:5</td>\n" +
+                    "    <td class=\"table_header_horizontal\">x:6</td>\n" +
+                    "  </tr>\n")
+            for(y in 0..6) {
+                textFile.appendText("  <tr>\n" +
+                        "    <td class=\"table_header_vertical\">y:$y</td>\n")
+                for(x in 0..6) {
+                    textFile.appendText("    <td class=\"table_data_x_$x table_data_y_$y\">\n" +
+                            "      <table>\n")
+
+                    textFile.appendText("        <tr>\n" +
+                            "          <td></td><td>${initWorld.cells[Position(x, y)]?.up}</td><td></td>\n" +
+                            "        </tr>\n" +
+                            "        <tr>\n" +
+                            "          <td>${initWorld.cells[Position(x, y)]?.left}</td><td></td><td>${initWorld.cells[Position(x, y)]?.right}</td>\n" +
+                            "        </tr>\n" +
+                            "        <tr>\n" +
+                            "          <td></td><td>${initWorld.cells[Position(x, y)]?.down}</td><td></td>\n" +
+                            "        </tr>\n")
+                    textFile.appendText("      </table>\n" +
+                            "    </td>\n")
+                }
+                textFile.appendText("  </tr>\n")
+            }
+
+            textFile.appendText("</table>\n" +
+                    "  </body>\n" +
+                    "</html>\n")
+        }
+        /** ---------- */
 
         /** 考察時にエージェントの数が100になるように修正 */
         for (adjustment in 1..(when (gridWidth) {
@@ -1051,7 +1101,7 @@ fun evaluate2433() {
     }
 
     /** 結果出力 */
-    jsFile.appendText("学習(2-4) エージェントの移動距離\n")
+    jsFile.appendText("// 学習(2-4) エージェントの移動距離\n")
     jsFile.appendText("var ctx_2_learn_data = $resultLearningPercentage;\n")
 }
 
