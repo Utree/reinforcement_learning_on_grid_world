@@ -175,7 +175,7 @@ const val repeatUpperNumberOfLearning = 25
 const val repeatLowerNumberOfLearning = 1
 const val repeatBasicNumberOfLearning = 20
 /** 忘却 */
-const val memoryTUpper = 10
+const val memoryTUpper = 20
 const val memoryTLower = 1
 const val memoryTBasic = 7
 /** ゴールの基本位置 */
